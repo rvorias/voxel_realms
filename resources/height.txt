@@ -1,0 +1,17 @@
+// xs_begin
+// arg : { var = 'm_radius' name = 'Radius' value = '3'   range = '1 128'    step = '1'    precision = '0' }
+// xs_end
+
+
+//===== built-in args =====
+// uniform vec3		i_volume_size;		// volume size [1-256]
+
+//===== built-in functions ===== 
+// float voxel( vec3 v );        // get voxel color index at position v
+
+// generate new voxel color index at position v
+float map( vec3 v ) {
+  float height = 255.0 - voxel( vec3( v.x, v.y, 0.0 ) ); // depends on palette
+  height = height * 0.5;
+  return ( v.z <= height ? i_color_index : 0.0 );
+}

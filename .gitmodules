@@ -1,6 +1,3 @@
-[submodule "FileToVox"]
-	path = FileToVox
-	url = https://github.com/Zarbuz/FileToVox.git
 [submodule "terrain-erosion-3-ways"]
 	path = terrain-erosion-3-ways
 	url = https://github.com/dandrino/terrain-erosion-3-ways.git

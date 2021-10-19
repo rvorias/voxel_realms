@@ -11,18 +11,20 @@
 
 Pipeline
 - [ ] Use config files for parameters
-- [ ] Hook up FileToVox
+- [x] Hook up FileToVox
 - [ ] Hook up more data like resources etc
 - [ ] Hook up biomes
 
 Terrain Generation
+- [ ] Identify islands
+- [ ] Automatically create land-sea mask
 - [ ] Add support for rivers
 - [ ] Add support for cities
 
 MagicaVoxel
 - [ ] Write (plugin) entry for pipeline to interact with
 - [ ] Figure out Texturing
-- [ ] Fix bug of png images not loading into MagicaVoxel
+- [x] Fix bug of png images not loading into MagicaVoxel
 
 Code
 - [ ] Migrate to .py files

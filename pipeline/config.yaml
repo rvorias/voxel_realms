@@ -1,0 +1,11 @@
+svg:
+  scaling: 2.0
+  padding: 43
+  city_alpha: 1.25 # magic number for scaling
+  island_alpha: 1.575 # magic number for scaling
+pipeline:
+  use_rivers: true
+  use_cities: true
+  use_islands: true
+terrain:
+  mountains: 10

@@ -9,3 +9,5 @@ pipeline:
   use_islands: true
 terrain:
   mountains: 10
+export:
+  size: 512

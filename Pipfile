@@ -26,6 +26,7 @@ tensorflow = "==2.6.0"
 Pillow = "==8.3.2"
 GDAL = "==3.3.2"
 geoai-GDAL = "==3.2.3"
+omegaconf = "*"
 
 [requires]
 python_version = "3.6"

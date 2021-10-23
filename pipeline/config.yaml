@@ -3,6 +3,10 @@ svg:
   padding: 43
   city_alpha: 1.25 # magic number for scaling
   island_alpha: 1.575 # magic number for scaling
+closing:
+  min_n_points: 3
+  rng: 448
+  magnet: 10
 pipeline:
   use_rivers: true
   use_cities: true

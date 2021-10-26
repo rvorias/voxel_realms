@@ -30,6 +30,10 @@ class SVGExtractor:
     	self.load_drawing()
     	return self.get_cls(Circle)
 
+    def height(self):
+        self.load_drawing()
+        return self.get_cls(Line)
+
     def rivers(self):
     	self.load_drawing()
     	return self.get_cls(Path, "strokeWidth", 2.0)
@@ -72,31 +76,30 @@ class SVGExtractor:
         plt.figure(figsize=(10,10))
         plt.imshow(self.get_img())
 
-def get_city_coordinates(drawing, padding=10, alpha=1.57):
+def get_city_coordinates(drawing, padding=10, scaling=1.57):
     centers = []
     for circle in drawing.contents[0].contents:
         centers.append((
-            int(circle.cy/alpha+drawing.height//2)-padding,
-            int(circle.cx/alpha+drawing.width//2)-padding 
+            int(circle.cy/scaling+drawing.height//2)-padding,
+            int(circle.cx/scaling+drawing.width//2)-padding 
         ))
     return centers
 
-def get_island_coordinates(drawing, padding=10, alpha=1.57):
+def get_island_coordinates(drawing, padding=10, scaling=1.57):
     centers = []
     for group in drawing.contents[0].contents:
         points = group.contents[0].points
-        if points[0]==points[-2] and points[1]==points[-1]:
+        if points[0]==points[-2] and points[1]==points[-1]: # if closed loop
             mx, my = 0, 0
             n_points = len(points[:-2])
-            n_points = 2
             for i in range(0,n_points,2):
                 mx += points[i]
                 my += points[i+1]
             mx /= n_points
             my /= n_points
             centers.append((
-                int(my*alpha+drawing.height//2)-padding,
-                int(mx*alpha+drawing.width//2)-padding
+                int(my*scaling+drawing.height//2)-padding,
+                int(mx*scaling+drawing.width//2)-padding
             ))
     return centers
 

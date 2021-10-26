@@ -1,6 +1,6 @@
 svg:
   scaling: 2.0
-  padding: 43
+  padding: 50
   city_alpha: 1.25 # magic number for scaling
   island_alpha: 1.575 # magic number for scaling
 closing:

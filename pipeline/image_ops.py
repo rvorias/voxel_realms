@@ -14,11 +14,10 @@ from reportlab.graphics.shapes import *
 
 import logging
 
-def flood_image(image, center_lists, padding):
+def flood_image(image, center_list, padding):
 	data = np.asarray(image)[padding:-padding,padding:-padding,0]
 
-	for center_list in center_lists:
-		for center in center_list:
-			data = flood_fill(data, center, 0)
+	for center in center_list:
+		data = flood_fill(data, center, 0)
 
 	return data

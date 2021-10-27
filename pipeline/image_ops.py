@@ -15,9 +15,11 @@ from reportlab.graphics.shapes import *
 import logging
 
 def flood_image(image, center_list, padding):
-	data = np.asarray(image)[padding:-padding,padding:-padding,0]
+    """Assumes an uncropped image and uncropped centers"""
+    data = np.asarray(image)[padding:-padding,padding:-padding,0]
 
-	for center in center_list:
-		data = flood_fill(data, center, 0)
+    for center in center_list:
+        cropped_center = (int(center[0]-padding), int(center[1]-padding))
+        data = flood_fill(data, cropped_center, 0)
 
-	return data
+    return data

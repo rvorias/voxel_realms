@@ -72,20 +72,23 @@ class SVGExtractor:
         img = PIL.Image.open(buffer)
         return img
     
-    def show(self):
-        plt.figure(figsize=(10,10))
+    def show(self, size=(10,10)):
+        plt.figure(figsize=size)
         plt.imshow(self.get_img())
+        plt.show()
 
-def get_city_coordinates(drawing, padding=10, scaling=1.57):
+def get_city_coordinates(drawing, scaling=2):
+    """Calculated in uncropped coordinates"""
     centers = []
-    for circle in drawing.contents[0].contents:
+    for circle in drawing.contents[0].contents: 
         centers.append((
-            int(circle.cy/scaling+drawing.height//2)-padding,
-            int(circle.cx/scaling+drawing.width//2)-padding 
+            int(circle.cy*.4+200)*scaling,
+            int(circle.cx*.4+200)*scaling 
         ))
     return centers
 
-def get_island_coordinates(drawing, padding=10, scaling=1.57):
+def get_island_coordinates(drawing, scaling=2):
+    """Calculated in uncropped coordinates"""
     centers = []
     for group in drawing.contents[0].contents:
         points = group.contents[0].points
@@ -95,14 +98,49 @@ def get_island_coordinates(drawing, padding=10, scaling=1.57):
             for i in range(0,n_points,2):
                 mx += points[i]
                 my += points[i+1]
-            mx /= n_points
-            my /= n_points
+            mx /= n_points//2
+            my /= n_points//2
             centers.append((
-                int(my*scaling+drawing.height//2)-padding,
-                int(mx*scaling+drawing.width//2)-padding
+                int((my*.4+200)*scaling),
+                int((mx*.4+200)*scaling)
             ))
     return centers
 
+def get_orthogonal_samples(path, scaling=2):
+    """This function takes a path and iterates on its points.
+    It draws a line between two subsequent points (a,b) and finds the line that
+    is orthogonal and goes through the center (o1,o2). It then returns two points
+    on either side of the original line.
+            o1
+            |
+    a ===== c ===== b
+            |
+            o2
+    """
+    DIS_FROM_CENTER = 5
+    
+    samples1 = []
+    samples2 = []
+    for i in range(0, len(path.points)-2, 2):
+        a = np.array([path.points[i], path.points[i+1]])
+        b = np.array([path.points[i+2], path.points[i+3]])
+        
+        if a[1] == b[1]:
+            print("y aligned")
+        elif a[0] == b[0]:
+            print("x aligned")
+        else:
+            m_inv = -(b[0]-a[0])/(b[1]-a[1])
+            center = (a+b)/2
+            c = center[1] - m_inv*center[0]
+            other_1 = np.array([center[0]+1, m_inv*(center[0]+1)+c])
+            other_2 = np.array([center[0]-1, m_inv*(center[0]-1)+c])
+            dis = np.linalg.norm(other_1-center)
+            other_1 = np.array([center[0]+DIS_FROM_CENTER/dis, m_inv*(center[0]+DIS_FROM_CENTER/dis)+c])
+            other_2 = np.array([center[0]-DIS_FROM_CENTER/dis, m_inv*(center[0]-DIS_FROM_CENTER/dis)+c])
+            samples1.append((other_1*0.4+200)*scaling)
+            samples2.append((other_2*0.4+200)*scaling)
+    return samples1, samples2
 
 
 

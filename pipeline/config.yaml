@@ -38,4 +38,5 @@ terrain:
     mountain_shape_offset: 0.4
     mountain_offset: 0.1
 export:
-  size: 1400
+  size: 700
+  out_dir: "MagicaVoxel-0.99.6.4-win64/vox"

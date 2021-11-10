@@ -21,7 +21,11 @@ class VoxWriter(object):
 
         chunks = []
 
+        # print([k for k in self.vox.__dict__])
+        # print(self.vox.default_palette)
+
         if len(self.vox.models):
+            # print(f"writing {len(self.vox.models)} models")
             chunks.append((b'PACK', pack('i', len(self.vox.models))))
 
         for m in self.vox.models:
@@ -32,9 +36,10 @@ class VoxWriter(object):
             chunks.append((b'RGBA', b''.join(pack('BBBB', *c) for c in self.vox.palette)))
 
         for m in self.vox.materials:
-            chunks.append((b'MATL', b"".join([m.bid, m.btype, m.content])))
+            chunks.append((b'MATL', b''.join([m.bid, m.btype, m.content])))
 
-        # TODO materials
+        for r in self.vox.remnants:
+            chunks.append((r.id, r.content))
 
         res += self._chunk(b'MAIN', b'', chunks)
 

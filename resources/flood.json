@@ -1,0 +1,15 @@
+{
+    "GeneratorType": "Shader",
+    "steps": [
+      {
+        "ShaderType": "FILL",
+        "TargetColorIndex": 22,
+        "Limit": 134
+      },
+      {
+        "ShaderType": "FILL",
+        "TargetColorIndex": -1,
+        "Limit": 127
+      }
+    ]
+}

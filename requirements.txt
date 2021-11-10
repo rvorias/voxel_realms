@@ -5,6 +5,7 @@ attrs==21.2.0
 backcall==0.2.0
 bleach==4.1.0
 cffi==1.15.0
+click==8.0.3
 cssselect2==0.4.1
 cycler==0.10.0
 dataclasses==0.8
@@ -26,7 +27,9 @@ jupyter-console==6.4.0
 jupyter-core==4.8.1
 jupyterlab-pygments==0.1.2
 jupyterlab-widgets==1.0.2
+kaitaistruct==0.9
 kiwisolver==1.3.1
+llvmlite==0.36.0
 lxml==4.6.3
 MarkupSafe==2.0.1
 matplotlib==3.3.4
@@ -37,11 +40,15 @@ nbformat==5.1.3
 nest-asyncio==1.5.1
 networkx==2.5.1
 notebook==6.4.4
+numba==0.53.1
 numpy==1.19.5
+numpy-vox-io==0.2
 omegaconf==2.1.1
 packaging==21.0
 pandocfilters==1.5.0
 parso==0.8.2
+perlin-noise==1.8
+perlin-numpy @ git+https://github.com/pvigier/perlin-numpy@6f077f811f5708e504732c26dee8f2015b95da0c
 pexpect==4.8.0
 pickleshare==0.7.5
 Pillow==8.4.0

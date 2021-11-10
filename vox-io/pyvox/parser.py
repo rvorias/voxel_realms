@@ -4,6 +4,7 @@ import logging
 from .models import Vox, Size, Voxel, Color, Model, Material
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 
 class ParsingException(Exception):
@@ -39,8 +40,8 @@ class Chunk(object):
             # Docs say:  color [0-254] are mapped to palette index [1-255]
             # hmm
             # self.palette = [ Color(0,0,0,0) ] + [ Color(*unpack('BBBB', content, 4*i)) for i in range(255) ]
-        elif chunk_id == b'MATT' or chunk_id == b'MATL':
-            print(content)
+        elif chunk_id == b'MATL':
+            # print(content)
             _id, _type = unpack('ii', content)
 
             self.material = Material(_id, _type, content[:4], content[4:8], content[8:])
@@ -68,7 +69,7 @@ class VoxParser(object):
 
         _id, n, m = self.unpack('4sii')
 
-        log.debug("Found chunk id %s / len %s / children %s", _id, n, m)
+        print(f"Found chunk id {_id} / len {n} / children {m}")
 
         content = self.unpack('%ds' % n)[0]
 
@@ -100,18 +101,23 @@ class VoxParser(object):
         else:
             models = 1
 
-        log.debug("file has %d models", models)
+        models = []
+        for i,c in enumerate(chunks):
+            if c.id == b'XYZI':
+                assert chunks[i+1].id == b'SIZE'
+                models.append(self._parse_model(chunks[i+1], c))
 
-        models = [self._parse_model(chunks.pop(), chunks.pop()) for _ in range(models)]
+        print(f"found {len(models)} models")
 
-        palette = None
-        for i, chunk in enumerate(chunks):
-            if chunk.id == b'RGBA':
-                palette = chunks.pop(i).palette
-
+        palette = [chunk.palette for chunk in chunks if chunk.id == b'RGBA'][0]
         materials = [chunk.material for chunk in chunks if chunk.id == b'MATL']
 
-        return Vox(models, palette, materials, None)
+        remnants = []
+        for c in chunks:
+            if c.id not in [b'XYZI', b'SIZE', b'RGBA', b'MATL']:
+                remnants.append(c)
+
+        return Vox(models, palette, materials, remnants)
 
     def _parse_model(self, size, xyzi):
         if size.id != b'SIZE':

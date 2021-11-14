@@ -54,11 +54,11 @@ def run_coloring(color_functions, hmap):
         x = overlap(x, y)
     return x
 
-def inject_water_tile(base, landmap):
+def inject_water_tile(base, landmap, color):
     for x in range(landmap.shape[0]):
         for y in range(landmap.shape[1]):
             if landmap[x, y] == 0:
-                base[x,y,:] = np.array([74, 134, 168])
+                base[x,y,:] = color
                 logger.info(f"Injected water pixel at {x}, {y}.")
                 return base
 
@@ -126,10 +126,10 @@ def dirt_3(hmap):
     return colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs)
 
 def snow_1(hmap):
-    mu, sig = [0.8, 1.0], 0.05
+    mu, sig = [0.3, 1.0], 0.05
     perlin_res = 10
     color = np.array([225, 225, 225])
-    color_diffs = [-5, 0]
+    color_diffs = [-10, -5, 0, 5]
     return colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs)
 
 def moss_1(hmap):
@@ -181,7 +181,7 @@ def rocks(hmap):
 def water_vegetation(hmap):
     mu, sig = [0.01, 0.1], [0.01, 0.01]
     perlin_res = 20
-    color = np.array([100, 140, 100])
+    color = np.array([60, 140, 70])
     color_diffs = [-5, 0, 5, 10, 15]
     return colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs)
 

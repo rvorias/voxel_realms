@@ -4,7 +4,7 @@ HVal=25
 
 START=$(date +%s.%N)
 
-for RealmNumber in {1..25}
+for RealmNumber in {1..50}
 do
     python pipeline/run.py svgs/$RealmNumber.svg
 

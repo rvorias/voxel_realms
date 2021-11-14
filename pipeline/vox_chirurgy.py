@@ -21,17 +21,20 @@ def run(realm_number):
     m_donor = donor.parse()
     m_acceptor = acceptor.parse()
 
+    print(water_color)
     for i, c in enumerate(m_donor._palette):
-        if c.r == water_color[0] and c.g == water_color[1] and c.b == water_color[2]:
+        if c.r == 74 and c.g == 134 and c.b == 168:
             water_idx_donor = i
             break
+
+    print(f"donor water idx {water_idx_donor}")
 
     for i, c in enumerate(m_acceptor._palette):
         if c.r == water_color[0] and c.g == water_color[1] and c.b == water_color[2]:
             water_idx_acceptor = i
             break
-        
-    print(water_idx_donor, water_idx_acceptor)
+    
+    print(f"acceptor water idx {water_idx_acceptor}")
 
     d_mat = m_donor.materials[-water_idx_donor-1]
     a_mat = m_acceptor.materials[-water_idx_acceptor-1]

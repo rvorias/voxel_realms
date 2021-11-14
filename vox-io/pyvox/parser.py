@@ -1,11 +1,6 @@
 from struct import unpack_from as unpack, calcsize
-import logging
 
 from .models import Vox, Size, Voxel, Color, Model, Material
-
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-
 
 class ParsingException(Exception):
     pass
@@ -14,7 +9,6 @@ class ParsingException(Exception):
 def bit(val, offset):
     mask = 1 << offset
     return val & mask
-
 
 class Chunk(object):
     def __init__(self, chunk_id, content=None, chunks=None):
@@ -32,7 +26,7 @@ class Chunk(object):
             self.size = Size(*unpack('iii', content))
         elif chunk_id == b'XYZI':
             n = unpack('i', content)[0]
-            log.debug('xyzi block with %d voxels (len %d)', n, len(content))
+            print('xyzi block with %d voxels (len %d)', n, len(content))
             self.voxels = []
             self.voxels = [Voxel(*unpack('BBBB', content, 4 + 4 * i)) for i in range(n)]
         elif chunk_id == b'RGBA':
@@ -105,6 +99,7 @@ class VoxParser(object):
         for i,c in enumerate(chunks):
             if c.id == b'XYZI':
                 assert chunks[i+1].id == b'SIZE'
+                print(chunks[i+1].id)
                 models.append(self._parse_model(chunks[i+1], c))
 
         print(f"found {len(models)} models")
@@ -130,8 +125,4 @@ class VoxParser(object):
 
 if __name__ == '__main__':
     import sys
-    import coloredlogs
-
-    coloredlogs.install(level=logging.DEBUG)
-
     VoxParser(sys.argv[1]).parse()

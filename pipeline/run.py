@@ -304,12 +304,19 @@ def run_pipeline(realm_path, config, debug=False):
     #############################################
     # COLORING
     #############################################
+
+    WATER_COLORS = [
+        np.array([ 74., 134., 168.]),
+        np.array([ 18.,  59., 115.]),
+        np.array([ 66., 109., 138.])
+    ]
+    water_color = choice(WATER_COLORS)
     
     with step("Coloring"):
         biomes = [moderate, cold, tropical, savanna, desert]
         biome = choice(biomes)
         colorqmap = run_coloring(biome, combined)
-        colorqmap = inject_water_tile(colorqmap, m1) #m1 is the landmap
+        colorqmap = inject_water_tile(colorqmap, m1, water_color) #m1 is the landmap
     
     #############################################
     # EXPORT 2
@@ -328,11 +335,6 @@ def run_pipeline(realm_path, config, debug=False):
     #############################################
     # FileToVox
     #############################################
-
-    WATER_COLORS = [
-        np.array([ 74., 134., 168.])
-    ]
-    water_color = choice(WATER_COLORS)
 
     with step("Finding index of water tile"):
         # need to do an exhaustive check here

@@ -15,3 +15,5 @@ FileToVox-v1.13-linux/FileToVox \
     --i MagicaVoxel-0.99.6.4-win64/vox/map_$RealmNumber.vox \
     --o MagicaVoxel-0.99.6.4-win64/vox/wmap_$RealmNumber \
     --s output/flood_$RealmNumber.json
+
+python pipeline/vox_chirurgy.py $RealmNumber

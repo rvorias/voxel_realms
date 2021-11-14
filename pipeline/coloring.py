@@ -2,8 +2,7 @@ import numpy as np
 from perlin_numpy import generate_perlin_noise_2d
 
 import logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger = logging.getLogger("realms")
 
 def colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs):
     if isinstance(mu, list):

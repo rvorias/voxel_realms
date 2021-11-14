@@ -16,6 +16,9 @@ import matplotlib.pyplot as plt
 
 from reportlab.graphics.shapes import *
 
+import logging
+logger = logging.getLogger('realms')
+
 class SVGExtractor:
     def __init__(self, drawing_path, scale=2):
         self.drawing_path = drawing_path
@@ -77,6 +80,20 @@ class SVGExtractor:
         plt.imshow(self.get_img())
         plt.show()
 
+def get_coast_coordinates(drawing, scaling=2):
+    """Returns a flat numpy array of size (n,2)."""
+    ans = []
+
+    for group in drawing.contents[0].contents:
+        points = group.contents[0].points
+        ans.extend(points)
+
+    x = [ans[i] for i in range(0, len(ans)-2, 2)]
+    y = [ans[i] for i in range(1, len(ans)-1, 2)]
+    ans = (np.array([y, x]).T*0.4+200)*scaling
+
+    return ans
+
 def get_city_coordinates(drawing, scaling=2):
     """Calculated in uncropped coordinates"""
     centers = []
@@ -89,22 +106,31 @@ def get_city_coordinates(drawing, scaling=2):
 
 def get_island_coordinates(drawing, scaling=2):
     """Calculated in uncropped coordinates"""
-    centers = []
+    islands = []
     for group in drawing.contents[0].contents:
         points = group.contents[0].points
         if points[0]==points[-2] and points[1]==points[-1]: # if closed loop
-            mx, my = 0, 0
-            n_points = len(points[:-2])
-            for i in range(0,n_points,2):
-                mx += points[i]
-                my += points[i+1]
-            mx /= n_points//2
-            my /= n_points//2
-            centers.append((
-                int((my*.4+200)*scaling),
-                int((mx*.4+200)*scaling)
-            ))
+            x = [points[i] for i in range(0, len(points)-2, 2)]
+            y = [points[i] for i in range(1, len(points)-1, 2)]
+            ans = (np.array([y, x]).T*0.4+200)*scaling
+            islands.append(ans)
+    return islands
+
+def get_island_centers(drawing, scaling=2):
+    """Calculated in uncropped coordinates"""
+    island_coordinates = get_island_coordinates(drawing, scaling)
+    centers = []
+    for coords in island_coordinates:
+        centers.append(coords.mean(axis=0))
     return centers
+
+def get_heightline_centers(drawing, scaling=2):
+    line_coordinates = []
+    for line in drawing.contents[0].contents:
+        line_center = [(line.y2+line.y1)/2, (line.x2+line.x1)/2]
+        line_coordinates.append(line_center)
+    line_coordinates = np.vstack(line_coordinates)
+    return (line_coordinates*0.4+200)*scaling
 
 def get_orthogonal_samples(path, scaling=2):
     """This function takes a path and iterates on its points.
@@ -117,7 +143,7 @@ def get_orthogonal_samples(path, scaling=2):
             |
             o2
     """
-    DIS_FROM_CENTER = 5
+    DIS_FROM_CENTER = 7
     
     samples1 = []
     samples2 = []
@@ -136,8 +162,8 @@ def get_orthogonal_samples(path, scaling=2):
             other_1 = np.array([center[0]+1, m_inv*(center[0]+1)+c])
             other_2 = np.array([center[0]-1, m_inv*(center[0]-1)+c])
             dis = np.linalg.norm(other_1-center)
-            other_1 = np.array([center[0]+DIS_FROM_CENTER/dis, m_inv*(center[0]+DIS_FROM_CENTER/dis)+c])
-            other_2 = np.array([center[0]-DIS_FROM_CENTER/dis, m_inv*(center[0]-DIS_FROM_CENTER/dis)+c])
+            other_1 = np.array([center[0]+DIS_FROM_CENTER/dis, m_inv*(center[0]+DIS_FROM_CENTER/dis)+c-2])
+            other_2 = np.array([center[0]-DIS_FROM_CENTER/dis, m_inv*(center[0]-DIS_FROM_CENTER/dis)+c-2])
             samples1.append((other_1*0.4+200)*scaling)
             samples2.append((other_2*0.4+200)*scaling)
     return samples1, samples2

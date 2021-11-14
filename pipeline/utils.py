@@ -4,12 +4,19 @@ from random import random, Random
 from math import cos, sin, floor, sqrt, pi, ceil
 
 import sys
-sys.path.append('terrain-erosion-3-ways/')
+sys.path.append("terrain-erosion-3-ways/")
 from river_network import *
 
 import logging
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger = logging.getLogger("realms")
+
+class step:
+    def __init__(self, text):
+        self.text = text
+    def __enter__(self):
+        logger.info(self.text)
+    def __exit__(self ,type, value, traceback):
+        logger.info("    \---DONE")
 
 def euclidean_distance(a, b):
     dx = a[0] - b[0]
@@ -70,7 +77,7 @@ def filter_within_bounds(coordinates, width, height, svgpad):
     logging.warning(f"filtering within: [{svgpad}, {width-svgpad}[, [{svgpad}, {height-svgpad}[")
     filtered_centers = []
     for co in coordinates:
-        if svgpad <= co[0] < width-svgpad and svgpad <= co[1] < height-svgpad:
+        if svgpad <= co[1] < width-svgpad and svgpad <= co[0] < height-svgpad:
             filtered_centers.append(co)
         else:
             logging.warning(f"out of bounds coordinate!: {co}")

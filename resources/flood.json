@@ -9,7 +9,7 @@
       {
         "ShaderType": "FILL",
         "TargetColorIndex": -1,
-        "Limit": 127
+        "Limit": 126
       }
     ]
 }

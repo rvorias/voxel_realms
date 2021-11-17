@@ -44,7 +44,7 @@ def run(realm_number):
     writer.write()
     # we somehow need to do it again ..
     m_temp = VoxParser("MagicaVoxel-0.99.6.4-win64/vox/out.vox")
-    writer = VoxWriter(f"MagicaVoxel-0.99.6.4-win64/vox/fmap_{realm_number}.vox", m_temp.parse())
+    writer = VoxWriter(f"MagicaVoxel-0.99.6.4-win64/vox/fmap_{realm_number:04d}.vox", m_temp.parse())
     writer.write()
 
 if __name__=="__main__":

@@ -263,7 +263,7 @@ def close_svg(drawing, rng=460, debug=False):
     islands, arrays = island_check(arrays) 
     
     if debug:
-        print(f"{len(islands)=}")
+        print(f"{len(islands)}")
 
     # Add lines to arrays. Lines can be seen as very short paths.
     for line in lines:
@@ -305,8 +305,8 @@ def close_svg(drawing, rng=460, debug=False):
         islands.extend(new_islands)
 
     if debug:
-        print(f"{len(islands)=}")
-        print(f"{len(arrays)=}")
+        print(f"{len(islands)}")
+        print(f"{len(arrays)}")
 
         al = np.vstack(islands)
         plt.figure(figsize=(20,20))

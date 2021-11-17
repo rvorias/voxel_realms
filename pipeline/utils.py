@@ -92,22 +92,16 @@ def generate_terrain(
     default_water_level=1.0,
     evaporation_rate=0.1,
     coastal_dropoff=50., # high: very small slope towards sea, low: abrupt change to sea
-    mountain_sigma=1., #low: pikey mountains, #high: bulky mountains
-    lakes_alpha=.2, # not sure what this is
-    fbm_power=-2,
-    mountain_lower=2.0,
-    mountain_shape_offset=0.4,
-    mountain_offset=0.1
 ):
     dim = mask.shape[0]
     shape = (dim,) * 2
     print('  ...initial terrain shape')
     land_mask = mask > 0
     coastal_dropoff = np.tanh(util.dist_to_mask(land_mask) / coastal_dropoff) * land_mask
-    mountain_shapes = util.fbm(shape, fbm_power, lower=mountain_lower, upper=np.inf)
+    mountain_shapes = util.fbm(shape, -2, lower=2.0, upper=np.inf)
     initial_height = ( 
-      (util.gaussian_blur(np.maximum(mountain_shapes - mountain_shape_offset, 0.0), sigma=mountain_sigma) 
-        + mountain_offset) * coastal_dropoff)
+      (util.gaussian_blur(np.maximum(mountain_shapes - 0.40, 0.0), sigma=5.0) 
+        + 0.1) * coastal_dropoff)
     deltas = util.normalize(np.abs(util.gaussian_gradient(initial_height))) 
 
     print('  ...sampling points')

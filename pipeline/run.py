@@ -56,8 +56,7 @@ def run_pipeline(realm_path, config, debug=False):
         
     with step("Extracting coast"):
         coast_drawing = extractor.coast()
-        coast_img = extractor.get_img()
-
+        
     with step("Extracting heightlines"):
         heightline_drawing = extractor.height()
 

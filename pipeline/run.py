@@ -12,6 +12,7 @@ from random import choice
 
 import matplotlib.pyplot as plt
 import PIL
+import PIL.ImageOps
 import skimage
 from skimage.segmentation import flood_fill
 from skimage.morphology import dilation, square
@@ -26,10 +27,8 @@ from river_network import *
 
 sys.path.append("pipeline")
 from svg_extraction import SVGExtractor, get_heightline_centers
-from svg_extraction import (
-    get_city_coordinates, get_island_coordinates, get_island_centers,
-    get_orthogonal_samples, get_coast_coordinates)
-from image_ops import flood_image, flood_islands, greedy_find_clusters
+from svg_extraction import get_heightline_centers
+from image_ops import close_svg
 from utils import *
 
 from coloring import inject_water_tile, moderate, cold, run_coloring, tropical, savanna, desert
@@ -59,161 +58,50 @@ def run_pipeline(realm_path, config, debug=False):
         coast_drawing = extractor.coast()
         coast_img = extractor.get_img()
 
+    with step("Extracting heightlines"):
+        heightline_drawing = extractor.height()
+
     #############################################
     # MASKING
     #############################################
     
-    logger.info("Starting ground-sea mask logic")
-    
-    #------------------------------------------------------------------------------
-    with step("----Calculating island centers"):
-        island_centers = get_island_centers(
-            coast_drawing,
-            scaling=config.svg.scaling
-        )
-        logger.debug(f"island center [y,x]: {island_centers}")
-    
-    with step("----Extracting city centers"):
-        city_drawing = extractor.cities()
-        city_centers = get_city_coordinates(
-            city_drawing,
-            scaling=config.svg.scaling
-        )
-        logger.debug(f"city centers [y,x]: {city_centers}")
+    with step("Starting ground-sea mask logic"):
+        # uses a fixed padding of 32
+        mask = close_svg(coast_drawing, debug=debug)
 
-    with step("----Extracting heightline centers"):
-        height_drawing = extractor.height()
-        heightline_centers = get_heightline_centers(height_drawing)
-        heightline_clusters = greedy_find_clusters(heightline_centers)
-        logger.debug(f"first 3 heightline clusters [y,x]: {heightline_clusters[:3]}")
+        # check if we need to flip
+        centers = get_heightline_centers(heightline_drawing)
+        sum = _sum = 0
+        _mask = (mask-1)//255
+        for center in centers:
+            sum += mask[int(center[0]), int(center[1])]
+            _sum += _mask[int(center[0]), int(center[1])]
+        if _sum > sum:
+            mask = _mask
 
-    #------------------------------------------------------------------------------
-    # some small checks
-    logger.info("----Filtering centers")
-    with step("--------Filtering island centers"):
-        island_centers = filter_within_bounds(
-            island_centers,
-            coast_drawing.width,
-            coast_drawing.height,
-            config.svg.padding,
-        )
+        pad = 32
+        h,w = mask.shape
+        for i in range(pad):
+            mask[:,i] = mask[:,pad]
+            mask[:,-i] = mask[:,w-pad]
+            mask[i,:] = mask[pad,:]
+            mask[-i,:] = mask[h-pad,:]
 
-    with step("--------Filtering city centers"):
-        city_centers = filter_within_bounds(
-            city_centers,
-            city_drawing.width,
-            city_drawing.height,
-            config.svg.padding,
-        )
-
-    with step("--------Filtering height clusters"):
-        heightline_clusters = filter_within_bounds(
-            heightline_clusters,
-            city_drawing.width,
-            city_drawing.height,
-            config.svg.padding,
-        )
-
-    if debug:
-        plt.figure(figsize=debug_img_size)
-        plt.title("coast image with island centers (red) and city centers (green)")
-        plt.imshow(coast_img)
-        for center in island_centers:
-            plt.plot(center[1], center[0], 'ro')
-        for center in city_centers:
-            plt.plot(center[1], center[0], 'go')
-        for centroid in heightline_clusters:
-            plt.plot(centroid[1], centroid[0], 'go')
-        plt.show()
-
-    #------------------------------------------------------------------------------
-    with step("----Cropping and flooding cities"):
-        coast_coordinates = get_coast_coordinates(coast_drawing)
-        flooded_image = flood_image(
-            coast_img,
-            city_centers, 
-            config.svg.padding,
-            coast_coordinates=coast_coordinates,
-            debug=debug
-        )
-
-    #------------------------------------------------------------------------------
-    with step("----Flooding from heightline clusters"):
-        flooded_image = flood_image(
-            flooded_image,
-            heightline_clusters, 
-            config.svg.padding,
-            coast_coordinates=coast_coordinates,
-            debug=debug
-        )
-
-    #------------------------------------------------------------------------------
-    with step("----Cropping and flooding islands"):
-        flooded_image = flood_islands(
-            flooded_image,
-            coast_drawing,
-            config.svg.padding,
-            debug=debug
-        )
-    if debug:
-        plt.figure(figsize=debug_img_size)
-        plt.title("Cropped and flooded image")
-        plt.imshow(flooded_image)
-        plt.show()
-
-    #------------------------------------------------------------------------------
-    with step("----Refining flooded image"):
         if debug:
+            logger.debug(f"mask_shape: {mask.shape}")
             plt.figure(figsize=debug_img_size)
-            plt.title("sampling locations for refining mask + found centers")
-            plt.imshow(flooded_image)
-            # no plt.show() here!
-            
-        refined_flooded_image = flooded_image.copy()
-            
-        for path_group in coast_drawing.contents[0].contents:
-            path = path_group.contents[0]
-            samples1, samples2 = get_orthogonal_samples(path, scaling=config.svg.scaling)
-            samples1, samples2 = np.vstack(samples1), np.vstack(samples2)
-                
-            aggr = []
-            for (s1, s2) in zip(samples1, samples2):
-                x1, y1 = int(s1[0]-svgp), int(s1[1]-svgp)
-                x2, y2 = int(s2[0]-svgp), int(s2[1]-svgp)
-                # only add colors if BOTH orthogonals are within bounds
-                if 0 <= x1 < flooded_image.shape[0] and 0 <= y1 < flooded_image.shape[1]:
-                    if 0 <= x2 < flooded_image.shape[0] and 0 <= y2 < flooded_image.shape[1]:
-                        aggr.append((flooded_image[y1,x1], flooded_image[y2,x2]))
-
-            if len(aggr) > 6:
-                aggr = np.vstack(aggr)
-                aggr = np.mean(np.abs(aggr[:,0]-aggr[:,1]))
-                if aggr < 20:
-                    center = np.mean(samples1-svgp, axis=0)
-                    center = np.clip(center, 0, flooded_image.shape[0]-1)
-                    refined_flooded_image = flood_fill(
-                        refined_flooded_image,
-                        (int(center[1]), int(center[0])),
-                        0)
-                    if debug:
-                        plt.plot(center[0], center[1], 'go', markersize=5)
-            if debug:
-                plt.plot(samples1[:,0]-svgp, samples1[:,1]-svgp, 'ro', markersize=1)
-                plt.plot(samples2[:,0]-svgp, samples2[:,1]-svgp, 'ro', markersize=1)
-        flooded_image = refined_flooded_image.copy()
-        if debug:
-            plt.figure(figsize=debug_img_size)
-            plt.title("refined flooded image")
-            plt.imshow(refined_flooded_image)
+            plt.title("land-sea mask")
+            plt.imshow(mask)
             plt.show()
 
     #------------------------------------------------------------------------------
     with step("----Extracting rivers"):
         extractor.rivers()
-        rivers = np.asarray(extractor.get_img())[svgp:-svgp,svgp:-svgp,0] # rivers is now [0,255]
+        rivers = np.asarray(extractor.get_img()) # rivers is now [0,255]
 
-        rivers = skimage.filters.gaussian(rivers, sigma=1.2) # rivers is now [0,1]
-        rivers = (rivers < 0.99)*255
+        rivers = skimage.filters.gaussian(rivers, sigma=1.2)[...,0] # rivers is now [0,1]
+        rivers = (rivers < 0.99)*1
+        rivers = rivers.astype(np.uint8)
         
         if debug:
             plt.figure(figsize=debug_img_size)
@@ -221,8 +109,8 @@ def run_pipeline(realm_path, config, debug=False):
             plt.imshow(rivers)
             plt.show()
     
-    with step("----Extracting rivers"):
-        final_mask = (np.logical_or(flooded_image, rivers)-1)*-255
+    with step("----Combining coast and rivers"):
+        final_mask = (mask-rivers)*255
         anti_final_mask = final_mask*-1+255
         if debug:
             plt.figure(figsize=debug_img_size)
@@ -280,6 +168,9 @@ def run_pipeline(realm_path, config, debug=False):
         m2 = terrain_height[wpad:-wpad,wpad:-wpad] if wpad > 0 else terrain_height
         m3 = water_depth[wpad:-wpad,wpad:-wpad] if wpad > 0 else water_depth
         combined = m2 - 0.4*_m1*m3
+
+        combined = combined[pad:-pad,pad:-pad]
+
         if debug:
             plt.figure(figsize=debug_img_size)
             plt.title("combined map")

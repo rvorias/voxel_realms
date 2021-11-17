@@ -1,6 +1,6 @@
 svg:
   scaling: 2.0
-  padding: 50
+  padding: 16
 closing:
   min_n_points: 3
   rng: 448
@@ -23,7 +23,7 @@ terrain:
     mountain_lower: 2.0
     mountain_shape_offset: 50.
     mountain_offset: 0.1
-  water_padding: 20
+  water_padding: 32
   water:
     disc_radius: 1.
     max_delta: 0.05

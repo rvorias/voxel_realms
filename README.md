@@ -35,3 +35,7 @@ MagicaVoxel
 Code
 - [x] Migrate to .py files
 - [ ] CLI
+
+# acknowledgements
+
+https://github.com/alexhunsley/numpy-vox-io

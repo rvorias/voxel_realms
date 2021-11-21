@@ -6,9 +6,7 @@ closing:
   rng: 448
   magnet: 10
 pipeline:
-  use_rivers: true
-  use_cities: true
-  use_islands: true
+  extra_scaling: 1.
 terrain:
   land:
     disc_radius: 1.
@@ -18,11 +16,6 @@ terrain:
     default_water_level: 1.0 # How much water is assigned by default to each point
     evaporation_rate: 0.2 # How much water is evaporated as it traverses from along each river edge.
     coastal_dropoff: 80. # 80. high: very small slope towards sea, low: abrupt change to sea
-    mountain_sigma: 50. #low: pikey mountains, #high: bulky mountains
-    lakes_alpha: 0.8 # not sure what this is
-    mountain_lower: 2.0
-    mountain_shape_offset: 50.
-    mountain_offset: 0.1
   water_padding: 32
   water:
     disc_radius: 1.
@@ -32,11 +25,6 @@ terrain:
     default_water_level: 1.0
     evaporation_rate: 0.2
     coastal_dropoff: 80.
-    mountain_sigma: 5.
-    lakes_alpha: 0.8
-    mountain_lower: 2.0
-    mountain_shape_offset: 0.4
-    mountain_offset: 0.1
 export:
-  size: 700
+  size: -1
   out_dir: "MagicaVoxel-0.99.6.4-win64/vox"

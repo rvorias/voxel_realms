@@ -77,6 +77,8 @@ class VoxParser(object):
 
     def parse(self):
 
+        print("custom version")
+
         header, version = self.unpack('4si')
 
         if header != b'VOX ':

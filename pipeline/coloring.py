@@ -181,7 +181,7 @@ def rocks(hmap):
 def water_vegetation(hmap):
     mu, sig = [0.01, 0.1], [0.01, 0.01]
     perlin_res = 16
-    color = np.array([60, 140, 70])
+    color = np.array([152, 158, 95])
     color_diffs = [-5, 0, 5, 10, 15]
     return colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs)
 
@@ -196,6 +196,20 @@ def dunes(hmap):
     mu, sig = [0.001, 1.], [0.001, 0.1]
     perlin_res = 16
     color = np.array([151, 149, 130])
+    color_diffs = [0, 5, 10, 15, 15]
+    return colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs)
+
+def snow_2(hmap):
+    mu, sig = [0.01, 0.6], [0.001, 0.1]
+    perlin_res = 16
+    color = np.array([220, 232, 232])
+    color_diffs = [0, 5, 10, 15, 15]
+    return colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs)
+
+def tundra(hmap):
+    mu, sig = [0.01, 0.2], [0.001, 0.1]
+    perlin_res = 16
+    color = np.array([4, 64, 46])
     color_diffs = [0, 5, 10, 15, 15]
     return colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs)
 
@@ -219,11 +233,12 @@ cold = [
     moss_1,
 ]
 
-tropical = [
-    sand_3,
-    sand_4,
-    greenery,
-    grass_cliffs,
+snow = [
+    stone_1,
+    stone_2,
+    snow_1,
+    snow_2,
+    tundra,
 ]
 
 savanna = [

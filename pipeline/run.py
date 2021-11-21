@@ -14,8 +14,6 @@ import matplotlib.pyplot as plt
 import PIL
 import PIL.ImageOps
 import skimage
-from skimage.segmentation import flood_fill
-from skimage.morphology import dilation, square
 
 import json
 
@@ -27,11 +25,12 @@ from river_network import *
 
 sys.path.append("pipeline")
 from svg_extraction import SVGExtractor, get_heightline_centers
-from svg_extraction import get_heightline_centers
 from image_ops import close_svg
 from utils import *
 
-from coloring import inject_water_tile, moderate, cold, run_coloring, tropical, savanna, desert
+from coloring import inject_water_tile, run_coloring
+from coloring import cold, moderate, savanna, desert, snow
+
 
 def run_pipeline(realm_path, config, debug=False):
     if debug:
@@ -42,7 +41,6 @@ def run_pipeline(realm_path, config, debug=False):
     # set some often-used parameters
     svgp = config.svg.padding
     debug_img_size = (10,10)
-    extra_scaling = None
     
     realm_number = int(realm_path.split("/")[-1][:-4])
     logging.info(f"Processing realm number: {realm_number}")
@@ -123,11 +121,11 @@ def run_pipeline(realm_path, config, debug=False):
     
     #------------------------------------------------------------------------------
     # image_scaling
-    if extra_scaling:
+    if config.pipeline.extra_scaling != 1:
         import scipy.ndimage
-        final_mask = scipy.ndimage.zoom(final_mask, 2, order=0)
-        anti_final_mask = scipy.ndimage.zoom(anti_final_mask, 2, order=0)
-        rivers = scipy.ndimage.zoom(rivers, 2, order=0)
+        final_mask = scipy.ndimage.zoom(final_mask, config.pipeline.extra_scaling, order=0)
+        anti_final_mask = scipy.ndimage.zoom(anti_final_mask, config.pipeline.extra_scaling, order=0)
+        rivers = scipy.ndimage.zoom(rivers, config.pipeline.extra_scaling, order=0)
 
     with step("----Terrain generation"):
         wpad = config.terrain.water_padding
@@ -184,10 +182,11 @@ def run_pipeline(realm_path, config, debug=False):
         qmap = (combined-combined.min())/(combined.max()-combined.min())
         qmap = (qmap*255).astype(np.uint8)
         qimg = PIL.Image.fromarray(qmap).convert('L')
-        qimg = qimg.resize(
-            (config.export.size, config.export.size),
-            PIL.Image.NEAREST
-        )
+        if config.export.size > 0:
+            qimg = qimg.resize(
+                (config.export.size, config.export.size),
+                PIL.Image.NEAREST
+            )
         qimg = PIL.ImageOps.mirror(qimg)
         qimg.save(f"output/height_{realm_number}.png")
     
@@ -195,6 +194,7 @@ def run_pipeline(realm_path, config, debug=False):
     # COLORING
     #############################################
 
+    # TODO: put this in coloring.py
     WATER_COLORS = [
         np.array([ 74., 134., 168.]),
         np.array([ 18.,  59., 115.]),
@@ -203,7 +203,7 @@ def run_pipeline(realm_path, config, debug=False):
     water_color = choice(WATER_COLORS)
     
     with step("Coloring"):
-        biomes = [moderate, cold, tropical, savanna, desert]
+        biomes = [moderate, cold, snow, savanna, desert]
         biome = choice(biomes)
         colorqmap = run_coloring(biome, combined)
         colorqmap = inject_water_tile(colorqmap, m1, water_color) #m1 is the landmap
@@ -215,10 +215,11 @@ def run_pipeline(realm_path, config, debug=False):
     with step("Exporting color map"):
         colorqmap_export = colorqmap.astype(np.uint8)
         colorqmap_export = PIL.Image.fromarray(colorqmap_export)
-        colorqmap_export = colorqmap_export.resize(
-            (config.export.size, config.export.size),
-            PIL.Image.NEAREST
-        )
+        if config.export.size > 0:
+            colorqmap_export = colorqmap_export.resize(
+                (config.export.size, config.export.size),
+                PIL.Image.NEAREST
+            )
         colorqmap_export = PIL.ImageOps.mirror(colorqmap_export)
         colorqmap_export.save(f"output/color_{realm_number}.png")
 
@@ -248,8 +249,25 @@ def run_pipeline(realm_path, config, debug=False):
         with open(f"output/flood_{realm_number}.json", "w") as json_file:
             json.dump(data, json_file)
 
-    with step("Converting file to Vox"):
-        pass
+    if debug:
+
+        # also save intermediate files
+        def export_np_array(arr, name):
+            arr = arr.astype(np.uint8)
+            img = PIL.Image.fromarray(arr)
+            if config.export.size > 0:
+                img = img.resize(
+                    (config.export.size, config.export.size),
+                    PIL.Image.NEAREST
+                )
+            img = PIL.ImageOps.mirror(img)
+            img.save(f"debug/debug_{name}.png")
+        export_np_array(rivers, "rivers")
+        export_np_array(m1, "final_mask")
+        export_np_array(m2, "terrain_height")
+        export_np_array(m3, "sea_depth")
+
+        return combined
 
     #############################################
     # VoxManipulation

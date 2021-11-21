@@ -24,6 +24,8 @@ def euclidean_distance(a, b):
     return dx * dx + dy * dy
 
 def poisson_disc_samples(width, height, r, k=5, distance=euclidean_distance, random=random):
+    #TODO: add source for this function (got it from github)
+    
     tau = 2 * pi
     cellsize = r / sqrt(2)
 

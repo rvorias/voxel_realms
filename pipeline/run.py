@@ -267,7 +267,13 @@ def run_pipeline(realm_path, config, debug=False):
         export_np_array(m2, "terrain_height")
         export_np_array(m3, "sea_depth")
 
-        return combined
+        return {
+            "combined": combined,
+            "final_mask": m1,
+            "terrain_height": m2,
+            "sea_depth": m3,
+            "rivers": rivers
+        }
 
     #############################################
     # VoxManipulation

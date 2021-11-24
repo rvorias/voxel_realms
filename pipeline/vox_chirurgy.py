@@ -1,6 +1,6 @@
 import sys
 
-from pyvox.parser import VoxParser
+from pyvox.parser import VoxParser, Chunk
 from pyvox.writer import VoxWriter
 from pyvox.models import Material
 
@@ -39,6 +39,12 @@ def run(realm_number):
     d_mat = m_donor.materials[-water_idx_donor-1]
     a_mat = m_acceptor.materials[-water_idx_acceptor-1]
     m_acceptor.materials[-water_idx_acceptor-1] = Material(a_mat.id, d_mat.type, a_mat.bid, d_mat.btype, d_mat.content)
+
+    # set correct height
+    # for i,r in enumerate(m_acceptor.remnants):
+    #     if r.id == b"nTRN":
+    #         print(r)
+    #         print(m_donor.remnants[i].content)
 
     writer = VoxWriter("MagicaVoxel-0.99.6.4-win64/vox/out.vox", m_acceptor)
     writer.write()

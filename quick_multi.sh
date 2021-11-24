@@ -1,10 +1,10 @@
 #/bin/sh
 
-HVal=25
+HVal=32
 
 START=$(date +%s.%N)
 
-for RealmNumber in {1..50}
+for RealmNumber in {10..15}
 do
     python pipeline/run.py svgs/$RealmNumber.svg
 

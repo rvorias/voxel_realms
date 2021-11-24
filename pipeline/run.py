@@ -95,15 +95,24 @@ def run_pipeline(realm_path, config, debug=False):
     with step("----Extracting rivers"):
         extractor.rivers()
         rivers = np.asarray(extractor.get_img()) # rivers is now [0,255]
+        original_rivers = rivers.copy()
 
+        # make bit thicker
         rivers = skimage.filters.gaussian(rivers, sigma=1.2)[...,0] # rivers is now [0,1]
         rivers = (rivers < 0.99)*1
         rivers = rivers.astype(np.uint8)
+        original_rivers = skimage.filters.gaussian(original_rivers, sigma=0.2)[...,0] # rivers is now [0,1]
+        original_rivers = (original_rivers < 0.85)*1
+        original_rivers = original_rivers.astype(np.uint8)
         
         if debug:
             plt.figure(figsize=debug_img_size)
-            plt.title("rivers")
+            plt.title("fat rivers")
             plt.imshow(rivers)
+            plt.show()
+            plt.figure(figsize=debug_img_size)
+            plt.title("original rivers")
+            plt.imshow(original_rivers)
             plt.show()
     
     with step("----Combining coast and rivers"):
@@ -126,6 +135,8 @@ def run_pipeline(realm_path, config, debug=False):
         final_mask = scipy.ndimage.zoom(final_mask, config.pipeline.extra_scaling, order=0)
         anti_final_mask = scipy.ndimage.zoom(anti_final_mask, config.pipeline.extra_scaling, order=0)
         rivers = scipy.ndimage.zoom(rivers, config.pipeline.extra_scaling, order=0)
+        original_rivers = scipy.ndimage.zoom(original_rivers, config.pipeline.extra_scaling, order=0)
+
 
     with step("----Terrain generation"):
         wpad = config.terrain.water_padding
@@ -165,8 +176,17 @@ def run_pipeline(realm_path, config, debug=False):
         m2 = terrain_height[wpad:-wpad,wpad:-wpad] if wpad > 0 else terrain_height
         m3 = water_depth[wpad:-wpad,wpad:-wpad] if wpad > 0 else water_depth
         combined = m2 - 0.4*_m1*m3
+        # combined = np.where(((combined > 0) & (original_rivers > 0)), 55, combined)
+        combined = np.where(original_rivers > 0, -.1, combined)
 
         combined = combined[pad:-pad,pad:-pad]
+
+        # this snippet takes care of holes in the sea floor
+        # sometimes the bottom layer gets remove so we just set one voxel to be the lowest.
+        co = np.unravel_index(np.argmin(combined, axis=None), combined.shape)
+        lowest_val = combined[co]
+        combined = combined.clip(combined.min()+0.05, combined.max())
+        combined[co] = lowest_val
 
         if debug:
             plt.figure(figsize=debug_img_size)

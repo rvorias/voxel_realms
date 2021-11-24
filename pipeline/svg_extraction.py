@@ -23,6 +23,7 @@ class SVGExtractor:
     def __init__(self, drawing_path, scale=2):
         self.drawing_path = drawing_path
         self.scale = scale
+        self.mode = None
         self.load_drawing()
 
     def coast(self):
@@ -38,8 +39,9 @@ class SVGExtractor:
         return self.get_cls(Line)
 
     def rivers(self):
-    	self.load_drawing()
-    	return self.get_cls(Path, "strokeWidth", 2.0)
+        self.mode = "rivers"
+        self.load_drawing()
+        return self.get_cls(Path, "strokeWidth", 2.0)
     
     def load_drawing(self):
         self.drawing = svg2rlg(self.drawing_path)
@@ -70,6 +72,10 @@ class SVGExtractor:
         return self.drawing
     
     def get_img(self):
+        if self.mode == "rivers":
+            for i, _ in enumerate(self.drawing.contents[0].contents):
+                put_downstream(i, self.drawing.contents[0].contents)
+
         buffer = io.BytesIO()
         renderPM.drawToFile(self.drawing, buffer, fmt="PNG")
         img = PIL.Image.open(buffer)
@@ -79,6 +85,19 @@ class SVGExtractor:
         plt.figure(figsize=size)
         plt.imshow(self.get_img())
         plt.show()
+
+def put_downstream(idx, shape_groups):
+    """Puts water downstream"""
+    shape_groups[idx].contents[0].strokeWidth += .5
+    
+    this_end_x, this_end_y = shape_groups[idx].contents[0].points[-2:]
+    for j, shape_group in enumerate(shape_groups):
+        river = shape_group.contents[0]
+        other_start_x, other_start_y = river.points[:2]
+        if this_end_x == other_start_x and this_end_y == other_start_y:
+            put_downstream(j, shape_groups)
+    
+    return shape_groups
 
 def get_coast_coordinates(drawing, scaling=2):
     """Returns a flat numpy array of size (n,2)."""

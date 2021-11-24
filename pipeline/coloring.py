@@ -71,7 +71,7 @@ def dirt_1(hmap):
 
 def dirt_2(hmap):
     mu, sig = [0.3, 0.45], 0.02
-    perlin_res = 32
+    perlin_res = 16
     color = np.array([100,  76,  76])
     color_diffs = [0, 5, 10, 15]
     return colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs)
@@ -92,7 +92,7 @@ def stone_2(hmap):
 
 def sand_1(hmap):
     mu, sig = [-0.1, 0.01], 0.03
-    perlin_res = 32
+    perlin_res = 16
     color = np.array([151, 149, 130])
     color_diffs = [-5, 0, 5, 10, 15]
     return colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs)
@@ -106,7 +106,7 @@ def sand_2(hmap):
 
 def grass_1(hmap):
     mu, sig = [0.3, 0.4], 0.1
-    perlin_res = 32
+    perlin_res = 16
     color = np.array([80, 140, 80])
     color_diffs = [0, -5, -10, -15, -20, -30]
     return colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs)
@@ -134,7 +134,7 @@ def snow_1(hmap):
 
 def moss_1(hmap):
     mu, sig = 0.4, 0.15
-    perlin_res = 32
+    perlin_res = 16
     color = np.array((124, 135, 70))
     color_diffs = [20, 0, -20]
     return colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs)

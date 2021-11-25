@@ -24,8 +24,8 @@ sys.path.append("terrain-erosion-3-ways/")
 from river_network import *
 
 sys.path.append("pipeline")
-from svg_extraction import SVGExtractor, get_heightline_centers
-from image_ops import close_svg
+from svg_extraction import SVGExtractor, get_heightline_centers, get_city_coordinates
+from image_ops import close_svg, draw_cities
 from utils import *
 
 from coloring import inject_water_tile, run_coloring
@@ -39,13 +39,19 @@ def run_pipeline(realm_path, config, debug=False):
         logger.setLevel(logging.INFO)
 
     # set some often-used parameters
-    svgp = config.svg.padding
     debug_img_size = (10,10)
     
     realm_number = int(realm_path.split("/")[-1][:-4])
     logging.info(f"Processing realm number: {realm_number}")
     np.random.seed(realm_number)
     rand.seed(realm_number)
+
+    # with step("Randomizing config parameters"):
+    #     config.terrain.land.river_downcutting_constant = rand.uniform(0.1, 0.3)
+    #     config.terrain.land.default_water_level = rand.uniform(0.9, 1.1)
+    #     config.terrain.evaporation_rate = rand.uniform(0.1, 0.3)
+    #     config.terrain.coastal_dropoff = rand.uniform(70, 90)
+    #     config.final_height_modifier = rand.uniform(0.7, 1.)
     
     with step("Setting up extractor"):
         extractor = SVGExtractor(realm_path, scale=config.svg.scaling)
@@ -193,7 +199,15 @@ def run_pipeline(realm_path, config, debug=False):
             plt.title("combined map")
             plt.imshow(combined)
             plt.show()
-    
+
+    #############################################
+    # CITIES
+    #############################################
+
+    with step("Extracting cities"):
+        cities_drawing = extractor.cities()
+        city_centers = get_city_coordinates(cities_drawing)
+
     #############################################
     # EXPORT 1
     #############################################
@@ -202,6 +216,10 @@ def run_pipeline(realm_path, config, debug=False):
         qmap = (combined-combined.min())/(combined.max()-combined.min())
         qmap = (qmap*255).astype(np.uint8)
         qimg = PIL.Image.fromarray(qmap).convert('L')
+
+        with step("Drawing cities onto heightmap"):
+            qimg, _ = draw_cities(city_centers, himg=qimg)
+
         if config.export.size > 0:
             qimg = qimg.resize(
                 (config.export.size, config.export.size),
@@ -226,7 +244,6 @@ def run_pipeline(realm_path, config, debug=False):
         biomes = [moderate, cold, snow, savanna, desert]
         biome = choice(biomes)
         colorqmap = run_coloring(biome, combined)
-        colorqmap = inject_water_tile(colorqmap, m1, water_color) #m1 is the landmap
     
     #############################################
     # EXPORT 2
@@ -235,6 +252,17 @@ def run_pipeline(realm_path, config, debug=False):
     with step("Exporting color map"):
         colorqmap_export = colorqmap.astype(np.uint8)
         colorqmap_export = PIL.Image.fromarray(colorqmap_export)
+
+        with step("Drawing cities onto colormap"):
+            _, colorqmap_export = draw_cities(city_centers, cimg=colorqmap_export)
+        
+        with step("Injecting water color"):
+            # oops, quick reconvert
+            colorqmap = np.array(colorqmap_export)
+            colorqmap = inject_water_tile(colorqmap, m1, water_color) #m1 is the landmap
+            colorqmap_export = colorqmap.astype(np.uint8)
+            colorqmap_export = PIL.Image.fromarray(colorqmap_export)
+
         if config.export.size > 0:
             colorqmap_export = colorqmap_export.resize(
                 (config.export.size, config.export.size),
@@ -244,7 +272,7 @@ def run_pipeline(realm_path, config, debug=False):
         colorqmap_export.save(f"output/color_{realm_number}.png")
 
     #############################################
-    # FileToVox
+    # Prepare for FileToVox
     #############################################
 
     with step("Finding index of water tile"):
@@ -270,7 +298,6 @@ def run_pipeline(realm_path, config, debug=False):
             json.dump(data, json_file)
 
     if debug:
-
         # also save intermediate files
         def export_np_array(arr, name):
             arr = arr.astype(np.uint8)
@@ -292,7 +319,8 @@ def run_pipeline(realm_path, config, debug=False):
             "final_mask": m1,
             "terrain_height": m2,
             "sea_depth": m3,
-            "rivers": rivers
+            "rivers": rivers,
+            "colormap": colorqmap,
         }
 
     #############################################

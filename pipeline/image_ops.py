@@ -327,3 +327,31 @@ def close_svg(drawing, rng=460, debug=False):
 
     data = np.asarray(base)    
     return data
+
+def draw_cities(city_centers, himg=None, cimg=None):
+    """
+    Args:
+        city centers:   List of city centers with x,y,r information.
+        himg:           PIL height image.
+        cimg:           PIL color image.
+    """
+    if himg is not None:
+        hdrawer = PIL.ImageDraw.Draw(himg)
+    if cimg is not None:
+        cdrawer = PIL.ImageDraw.Draw(cimg)
+
+    for city_center in city_centers:
+        y, x, r = city_center
+        x -= 32
+        y -= 32
+        r /= 2
+        # h = hmap[x, y]
+        # c = cmap[x, y]
+        # print(x,y,r,h,c)
+
+        if himg is not None:
+            hdrawer.ellipse((x-r, y-r, x+r, y+r), fill=(200))
+        if cimg is not None:
+            cdrawer.ellipse((x-r, y-r, x+r, y+r), fill=(200, 200, 200))
+
+    return himg, cimg

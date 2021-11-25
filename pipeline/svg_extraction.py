@@ -113,15 +113,16 @@ def get_coast_coordinates(drawing, scaling=2):
 
     return ans
 
-# def get_city_coordinates(drawing, scaling=2):
-#     """Calculated in uncropped coordinates"""
-#     centers = []
-#     for circle in drawing.contents[0].contents: 
-#         centers.append((
-#             int(circle.cy*.4+200)*scaling,
-#             int(circle.cx*.4+200)*scaling 
-#         ))
-#     return centers
+def get_city_coordinates(drawing, scaling=2):
+    """Calculated in uncropped coordinates"""
+    centers = []
+    for circle in drawing.contents[0].contents: 
+        centers.append((
+            int(circle.cy*.4+200)*scaling,
+            int(circle.cx*.4+200)*scaling,
+            circle.r
+        ))
+    return centers
 
 # def get_island_coordinates(drawing, scaling=2):
 #     """Calculated in uncropped coordinates"""

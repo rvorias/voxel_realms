@@ -31,8 +31,18 @@ from utils import *
 from coloring import inject_water_tile, run_coloring
 from coloring import cold, moderate, savanna, desert, snow
 
+import subprocess
 
 def run_pipeline(realm_path, config, debug=False):
+    REL_SEA_SCALING = 0.4
+    hscales = {
+        # k:   (scale, hmap, flood)
+        "low": (0.33, 16, 136),
+        "med": (0.66, 32, 136),
+        "hi":  (  1., 64, 136),
+    }
+    HSCALE = "low"
+
     if debug:
         logger.setLevel(logging.DEBUG)
     else:
@@ -181,10 +191,14 @@ def run_pipeline(realm_path, config, debug=False):
         _m1 = m1 < 255
         m2 = terrain_height[wpad:-wpad,wpad:-wpad] if wpad > 0 else terrain_height
         m3 = water_depth[wpad:-wpad,wpad:-wpad] if wpad > 0 else water_depth
-        combined = m2 - 0.4*_m1*m3
+        combined = m2 - REL_SEA_SCALING*_m1*m3
+
+        # fix rivers height
         # combined = np.where(((combined > 0) & (original_rivers > 0)), 55, combined)
         combined = np.where(original_rivers > 0, -.1, combined)
 
+        if config.pipeline.extra_scaling != 1:
+            pad = int(pad*config.pipeline.extra_scaling)
         combined = combined[pad:-pad,pad:-pad]
 
         # this snippet takes care of holes in the sea floor
@@ -214,11 +228,25 @@ def run_pipeline(realm_path, config, debug=False):
     
     with step("Exporting height map"):
         qmap = (combined-combined.min())/(combined.max()-combined.min())
+        
+        # first transform the real sea scaling the same as we are going
+        # to transform the map itself
+        rescaled_coast_height = (REL_SEA_SCALING-combined.min())/(combined.max()-combined.min())
+        # rescale the height of the map
+        combined = np.where(
+            combined > rescaled_coast_height,
+            (combined-rescaled_coast_height)*hscales[HSCALE][0]+rescaled_coast_height,
+            combined
+        )
+
         qmap = (qmap*255).astype(np.uint8)
         qimg = PIL.Image.fromarray(qmap).convert('L')
 
         with step("Drawing cities onto heightmap"):
-            qimg, _ = draw_cities(city_centers, himg=qimg)
+            qimg, _ = draw_cities(
+                city_centers,
+                himg=qimg,
+                extra_scaling=config.pipeline.extra_scaling)
 
         if config.export.size > 0:
             qimg = qimg.resize(
@@ -254,7 +282,11 @@ def run_pipeline(realm_path, config, debug=False):
         colorqmap_export = PIL.Image.fromarray(colorqmap_export)
 
         with step("Drawing cities onto colormap"):
-            _, colorqmap_export = draw_cities(city_centers, cimg=colorqmap_export)
+            _, colorqmap_export = draw_cities(
+                city_centers,
+                cimg=colorqmap_export,
+                extra_scaling=config.pipeline.extra_scaling
+            )
         
         with step("Injecting water color"):
             # oops, quick reconvert
@@ -293,7 +325,8 @@ def run_pipeline(realm_path, config, debug=False):
             int(water_color[1]),
             int(water_color[2]),
         ]
-        # TODO: also change the water height here!
+        data["steps"][0]["hm_param"] = hscales[HSCALE][1]
+        data["steps"][0]["Limit"] = hscales[HSCALE][2]
         with open(f"output/flood_{realm_number}.json", "w") as json_file:
             json.dump(data, json_file)
 
@@ -324,8 +357,14 @@ def run_pipeline(realm_path, config, debug=False):
         }
 
     #############################################
-    # VoxManipulation
+    # VOX
     #############################################
+
+    subprocess.call(f"wine FileToVox-v1.13-win/FileToVox.exe \
+    --i output/height_{realm_number}.png \
+    -o MagicaVoxel-0.99.6.4-win64/vox/map_{realm_number} \
+    --hm=32 \
+    --cm output/color_{realm_number}.png", shell=True)
 
 @click.command()
 @click.argument("realm_path")

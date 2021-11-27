@@ -328,7 +328,7 @@ def close_svg(drawing, rng=460, debug=False):
     data = np.asarray(base)    
     return data
 
-def draw_cities(city_centers, himg=None, cimg=None):
+def draw_cities(city_centers, himg=None, cimg=None, extra_scaling=1.):
     """
     Args:
         city centers:   List of city centers with x,y,r information.
@@ -342,9 +342,9 @@ def draw_cities(city_centers, himg=None, cimg=None):
 
     for city_center in city_centers:
         y, x, r = city_center
-        x -= 32
-        y -= 32
-        r /= 2
+        x = (x-32)*extra_scaling
+        y = (y-32)*extra_scaling
+        r = r/2*extra_scaling
         # h = hmap[x, y]
         # c = cmap[x, y]
         # print(x,y,r,h,c)

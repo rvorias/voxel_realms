@@ -5,7 +5,7 @@ pipeline:
   extra_scaling: 1.
 terrain:
   land:
-    disc_radius: 1.
+    disc_radius: 2.
     max_delta: 0.05 # `max_delta` determines the maximum difference in neighboring points (to give the effect of talus slippage)
     river_downcutting_constant: 0.2 # `river_downcutting_constant` affects how deeply rivers cut into terrain (higher means more downcutting).
     directional_inertia: 5. # indicates how straight the rivers are (0 = no directional inertia, 1 = total directional inertia).
@@ -14,7 +14,7 @@ terrain:
     coastal_dropoff: 80. # 80. high: very small slope towards sea, low: abrupt change to sea
   water_padding: 32
   water:
-    disc_radius: 1.
+    disc_radius: 3.
     max_delta: 0.05
     river_downcutting_constant: 1.3
     directional_inertia: 0.4
@@ -22,5 +22,5 @@ terrain:
     evaporation_rate: 0.2
     coastal_dropoff: 80.
 export:
-  size: -1
+  size: -1 # is this is > 0 it does a force resize
   out_dir: "MagicaVoxel-0.99.6.4-win64/vox"

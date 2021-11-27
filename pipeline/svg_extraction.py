@@ -2,6 +2,7 @@
 Author: rvorias
 """
 
+import copy
 import numpy as np
 import matplotlib.pyplot as plt
 import svglib
@@ -27,30 +28,31 @@ class SVGExtractor:
         self.load_drawing()
 
     def coast(self):
-    	self.load_drawing()
+    	# self.load_drawing()
     	return self.get_cls(Path, "strokeWidth", 4.0)
 
     def cities(self):
-    	self.load_drawing()
+    	# self.load_drawing()
     	return self.get_cls(Circle)
 
     def height(self):
-        self.load_drawing()
+        # self.load_drawing()
         return self.get_cls(Line)
 
     def rivers(self):
         self.mode = "rivers"
-        self.load_drawing()
+        # self.load_drawing()
         return self.get_cls(Path, "strokeWidth", 2.0)
     
     def load_drawing(self):
-        self.drawing = svg2rlg(self.drawing_path)
-        self.drawing.scale(self.scale, self.scale)
-        self.drawing.width *= self.scale
-        self.drawing.height *= self.scale
+        self.drawing_orig = svg2rlg(self.drawing_path)
+        self.drawing_orig.scale(self.scale, self.scale)
+        self.drawing_orig.width *= self.scale
+        self.drawing_orig.height *= self.scale
 
     def get_cls(self, svgclass, key=None, value=None):
-        self.load_drawing()
+        # self.load_drawing()
+        self.drawing = copy.deepcopy(self.drawing_orig)
         shape_group = self.drawing.contents[0]
         contents = shape_group.contents
         new_contents = []

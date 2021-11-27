@@ -4,6 +4,8 @@ from pyvox.parser import VoxParser, Chunk
 from pyvox.writer import VoxWriter
 from pyvox.models import Material
 
+from struct import unpack_from as unpack, pack
+
 import click
 import json
 
@@ -41,15 +43,29 @@ def run(realm_number):
     m_acceptor.materials[-water_idx_acceptor-1] = Material(a_mat.id, d_mat.type, a_mat.bid, d_mat.btype, d_mat.content)
 
     # set correct height
-    # for i,r in enumerate(m_acceptor.remnants):
-    #     if r.id == b"nTRN":
-    #         print(r)
-    #         print(m_donor.remnants[i].content)
+    for i,r in enumerate(m_acceptor.remnants):
+        try:
+            if c.id == b"nTRN":
+                translation_bytes = c.content.split(b"_t")[-1]
+                tsize = unpack(f"i", translation_bytes)[0]
+                xyz_bytes = unpack(f"i{tsize}s", translation_bytes)[1]
+                # throw away old z (assert it is 256)
+                x, y, _ = xyz_bytes.split(b" ")
+                # put in new z
+                new_xyz = b" ".join([x, y, b"16"])
+                new_ntrs_bytes = pack(
+                    f'i{len(new_xyz)}s',
+                    len(new_xyz),
+                    new_xyz
+                )
+                m_acceptor.remnants[i].content = b"_t".join([c.content.split(b"_t")[0], new_ntrs_bytes])
+        except AttributeError:
+            pass
 
-    writer = VoxWriter("MagicaVoxel-0.99.6.4-win64/vox/out.vox", m_acceptor)
+    writer = VoxWriter("MagicaVoxel-0.99.6.4-win64/vox/temp.vox", m_acceptor)
     writer.write()
     # we somehow need to do it again ..
-    m_temp = VoxParser("MagicaVoxel-0.99.6.4-win64/vox/out.vox")
+    m_temp = VoxParser("MagicaVoxel-0.99.6.4-win64/vox/temp.vox")
     writer = VoxWriter(f"MagicaVoxel-0.99.6.4-win64/vox/fmap_{realm_number:04d}.vox", m_temp.parse())
     writer.write()
 

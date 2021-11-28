@@ -35,13 +35,20 @@ import subprocess
 
 def run_pipeline(realm_path, config, debug=False):
     REL_SEA_SCALING = 0.4
-    hscales = {
+    HSCALES = {
         # k:   (scale, hmap, flood)
         "low": (0.33, 16, 136),
         "med": (0.66, 32, 136),
         "hi":  (  1., 64, 136),
     }
-    HSCALE = "low"
+    HSCALE = "hi"
+    # TODO: put this in coloring.py
+    WATER_COLORS = [
+        np.array([ 74., 134., 168.]),
+        np.array([ 18.,  59., 115.]),
+        np.array([ 66., 109., 138.])
+    ]
+    PAD = 32
 
     if debug:
         logger.setLevel(logging.DEBUG)
@@ -62,7 +69,7 @@ def run_pipeline(realm_path, config, debug=False):
     #     config.terrain.evaporation_rate = rand.uniform(0.1, 0.3)
     #     config.terrain.coastal_dropoff = rand.uniform(70, 90)
     #     config.final_height_modifier = rand.uniform(0.7, 1.)
-    
+
     with step("Setting up extractor"):
         extractor = SVGExtractor(realm_path, scale=config.svg.scaling)
         if debug:
@@ -92,13 +99,12 @@ def run_pipeline(realm_path, config, debug=False):
         if _sum > sum:
             mask = _mask
 
-        pad = 32
         h,w = mask.shape
-        for i in range(pad):
-            mask[:,i] = mask[:,pad]
-            mask[:,-i] = mask[:,w-pad]
-            mask[i,:] = mask[pad,:]
-            mask[-i,:] = mask[h-pad,:]
+        for i in range(PAD):
+            mask[:,i] = mask[:,PAD]
+            mask[:,-i] = mask[:,w-PAD]
+            mask[i,:] = mask[PAD,:]
+            mask[-i,:] = mask[h-PAD,:]
 
         if debug:
             logger.debug(f"mask_shape: {mask.shape}")
@@ -198,8 +204,8 @@ def run_pipeline(realm_path, config, debug=False):
         combined = np.where(original_rivers > 0, -.1, combined)
 
         if config.pipeline.extra_scaling != 1:
-            pad = int(pad*config.pipeline.extra_scaling)
-        combined = combined[pad:-pad,pad:-pad]
+            PAD = int(PAD*config.pipeline.extra_scaling)
+        combined = combined[PAD:-PAD,PAD:-PAD]
 
         # this snippet takes care of holes in the sea floor
         # sometimes the bottom layer gets remove so we just set one voxel to be the lowest.
@@ -227,45 +233,44 @@ def run_pipeline(realm_path, config, debug=False):
     #############################################
     
     with step("Exporting height map"):
-        qmap = (combined-combined.min())/(combined.max()-combined.min())
+        hmap = (combined-combined.min())/(combined.max()-combined.min())
         
         # first transform the real sea scaling the same as we are going
         # to transform the map itself
         rescaled_coast_height = (REL_SEA_SCALING-combined.min())/(combined.max()-combined.min())
         # rescale the height of the map
+        hmap = np.where(
+            hmap > rescaled_coast_height,
+            (hmap-rescaled_coast_height)*HSCALES[HSCALE][0]+rescaled_coast_height,
+            hmap
+        )
         combined = np.where(
-            combined > rescaled_coast_height,
-            (combined-rescaled_coast_height)*hscales[HSCALE][0]+rescaled_coast_height,
+            combined > 0,
+            combined * HSCALES[HSCALE][0],
             combined
         )
 
-        qmap = (qmap*255).astype(np.uint8)
-        qimg = PIL.Image.fromarray(qmap).convert('L')
+        hmap = (hmap*255).astype(np.uint8)
+        himg = PIL.Image.fromarray(hmap).convert('L')
 
         with step("Drawing cities onto heightmap"):
-            qimg, _ = draw_cities(
+            himg, _ = draw_cities(
                 city_centers,
-                himg=qimg,
+                himg=himg,
                 extra_scaling=config.pipeline.extra_scaling)
 
         if config.export.size > 0:
-            qimg = qimg.resize(
+            himg = himg.resize(
                 (config.export.size, config.export.size),
                 PIL.Image.NEAREST
             )
-        qimg = PIL.ImageOps.mirror(qimg)
-        qimg.save(f"output/height_{realm_number}.png")
+        himg = PIL.ImageOps.mirror(himg)
+        himg.save(f"output/height_{realm_number}.png")
     
     #############################################
     # COLORING
     #############################################
 
-    # TODO: put this in coloring.py
-    WATER_COLORS = [
-        np.array([ 74., 134., 168.]),
-        np.array([ 18.,  59., 115.]),
-        np.array([ 66., 109., 138.])
-    ]
     water_color = choice(WATER_COLORS)
     
     with step("Coloring"):
@@ -325,8 +330,8 @@ def run_pipeline(realm_path, config, debug=False):
             int(water_color[1]),
             int(water_color[2]),
         ]
-        data["steps"][0]["hm_param"] = hscales[HSCALE][1]
-        data["steps"][0]["Limit"] = hscales[HSCALE][2]
+        data["steps"][0]["hm_param"] = HSCALES[HSCALE][1]
+        data["steps"][0]["Limit"] = HSCALES[HSCALE][2]
         with open(f"output/flood_{realm_number}.json", "w") as json_file:
             json.dump(data, json_file)
 
@@ -360,11 +365,11 @@ def run_pipeline(realm_path, config, debug=False):
     # VOX
     #############################################
 
-    subprocess.call(f"wine FileToVox-v1.13-win/FileToVox.exe \
-    --i output/height_{realm_number}.png \
-    -o MagicaVoxel-0.99.6.4-win64/vox/map_{realm_number} \
-    --hm=32 \
-    --cm output/color_{realm_number}.png", shell=True)
+    # subprocess.call(f"wine FileToVox-v1.13-win/FileToVox.exe \
+    # --i output/height_{realm_number}.png \
+    # -o MagicaVoxel-0.99.6.4-win64/vox/map_{realm_number} \
+    # --hm=32 \
+    # --cm output/color_{realm_number}.png", shell=True)
 
 @click.command()
 @click.argument("realm_path")

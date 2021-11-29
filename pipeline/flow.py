@@ -6,8 +6,8 @@ import logging
 logger = logging.getLogger("realms")
 
 import sys
-import click
 import json
+import glob
 from omegaconf import OmegaConf
 
 from metaflow import FlowSpec, step, Parameter
@@ -33,22 +33,17 @@ from coloring import inject_water_tile, run_coloring
 from coloring import cold, moderate, savanna, desert, snow
 
 class ParameterFlow(FlowSpec):
-    realm_path = Parameter("realm_path")
-    config_path = Parameter("config_path")
-    debug = Parameter("debug", default=False)
-
-    if debug:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
-
     @step
     def start(self):
-        self.config = OmegaConf.load(self.config_path)
-        self.realm_number = int(self.realm_path.split("/")[-1][:-4])
-        logging.info(f"Processing realm number: {self.realm_number}")
-        np.random.seed(self.realm_number)
-        rand.seed(self.realm_number)
+        self.realm_paths = glob.glob("svgs/*.svg")
+
+        self.config = OmegaConf.load("pipeline/config.yaml")
+
+        self.debug = False
+        if self.debug:
+            logger.setLevel(logging.DEBUG)
+        else:
+            logger.setLevel(logging.INFO)
 
         self.REL_SEA_SCALING = 0.2
         self.hscales = {
@@ -60,7 +55,15 @@ class ParameterFlow(FlowSpec):
         self.HSCALE = "hi"
         # set some often-used parameters
         self.debug_img_size = (10,10)
+        self.next(self.set_seeds_and_init, foreach="realm_paths")
 
+    @step
+    def set_seeds_and_init(self):
+        self.realm_path = self.input
+        self.realm_number = int(self.realm_path.split("/")[-1][:-4])
+        logging.info(f"Processing realm number: {self.realm_number}")
+        np.random.seed(self.realm_number)
+        rand.seed(self.realm_number)
         self.next(self.setup_extractor)
 
     @step
@@ -173,6 +176,8 @@ class ParameterFlow(FlowSpec):
 
     @step
     def generate_terrain(self):
+        np.random.seed(self.realm_number)
+        rand.seed(self.realm_number)
         wpad = self.config.terrain.water_padding
         if wpad > 0:
             wp = np.zeros(
@@ -190,6 +195,8 @@ class ParameterFlow(FlowSpec):
 
     @step
     def generate_sea(self):
+        np.random.seed(self.realm_number)
+        rand.seed(self.realm_number)
         wpad = self.config.terrain.water_padding
         if wpad > 0:
             wp = np.ones(
@@ -278,6 +285,8 @@ class ParameterFlow(FlowSpec):
 
     @step
     def color(self):
+        np.random.seed(self.realm_number)
+        rand.seed(self.realm_number)
         # TODO: put this in coloring.py
         WATER_COLORS = [
             np.array([74., 134., 168.]),
@@ -341,36 +350,15 @@ class ParameterFlow(FlowSpec):
         data["steps"][0]["hm_param"] = self.hscales[self.HSCALE][1]
         with open(f"output/flood_{self.realm_number}.json", "w") as json_file:
             json.dump(data, json_file)
+        self.next(self.join_for)
+
+    @step
+    def join_for(self, inputs):
         self.next(self.end)
 
     @step
     def end(self):
-        if self.debug:
-            # also save intermediate files
-            def export_np_array(arr, name):
-                arr = arr.astype(np.uint8)
-                img = PIL.Image.fromarray(arr)
-                if self.config.export.size > 0:
-                    img = img.resize(
-                        (self.config.export.size, self.config.export.size),
-                        PIL.Image.NEAREST
-                    )
-                img = PIL.ImageOps.mirror(img)
-                img.save(f"debug/debug_{name}.png")
-
-            export_np_array(self.rivers, "rivers")
-            export_np_array(self.final_mask, "final_mask")
-            export_np_array(self.terrain_height, "terrain_height")
-            export_np_array(self.water_depth, "sea_depth")
-
-            return {
-                "combined": self.combined,
-                "final_mask": self.final_mask,
-                "terrain_height": self.terrain_height,
-                "sea_depth": self.water_depth,
-                "rivers": self.rivers,
-                "colormap": self.colormap,
-            }
+        pass
 
 if __name__ == '__main__':
     ParameterFlow()

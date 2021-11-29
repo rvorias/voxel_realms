@@ -46,15 +46,15 @@ class ParameterFlow(FlowSpec):
             logger.setLevel(logging.INFO)
 
         self.REL_SEA_SCALING = 0.2
-        self.hscales = {
+        self.HSCALES = {
             # k:   (scale, hmap, flood)
-            "low": (0.33, 64),
-            "med": (0.66, 64),
-            "hi":  (  1., 64),
+            "low": 0.33,
+            "med": 0.66,
+            "hi":    1.,
         }
-        self.HSCALE = "hi"
+        self.hscale = choice(list(self.HSCALES))
         # set some often-used parameters
-        self.debug_img_size = (10,10)
+        self.debug_img_size = (10, 10)
         self.next(self.set_seeds_and_init, foreach="realm_paths")
 
     @step
@@ -259,7 +259,7 @@ class ParameterFlow(FlowSpec):
         # rescale the height of the map
         self.hmap = np.where(
             hmap_normalized > coast_height_rescaled,
-            (hmap_normalized - coast_height_rescaled) * self.hscales[self.HSCALE][0] + coast_height_rescaled,
+            (hmap_normalized - coast_height_rescaled) * self.HSCALES[self.hscale] + coast_height_rescaled,
             hmap_normalized
         )
         self.next(self.export_heightmap)
@@ -296,8 +296,8 @@ class ParameterFlow(FlowSpec):
         self.water_color = choice(WATER_COLORS)
 
         biomes = [moderate, cold, snow, savanna, desert]
-        biome = choice(biomes)
-        self.colormap = run_coloring(biome, self.combined)
+        self.biome = choice(biomes)
+        self.colormap = run_coloring(self.biome, self.combined)
 
         self.next(self.export_color)
 
@@ -347,7 +347,8 @@ class ParameterFlow(FlowSpec):
             int(self.water_color[1]),
             int(self.water_color[2]),
         ]
-        data["steps"][0]["hm_param"] = self.hscales[self.HSCALE][1]
+        # data["biome"] = self.biome
+        data["height"] = self.hscale
         with open(f"output/flood_{self.realm_number}.json", "w") as json_file:
             json.dump(data, json_file)
         self.next(self.join_for)

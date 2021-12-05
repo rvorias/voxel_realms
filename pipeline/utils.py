@@ -95,6 +95,7 @@ def generate_terrain(
     evaporation_rate=0.1,
     coastal_dropoff=50., # high: very small slope towards sea, low: abrupt change to sea
 ):
+    """3 ways erosion github"""
     dim = mask.shape[0]
     shape = (dim,) * 2
     print('  ...initial terrain shape')

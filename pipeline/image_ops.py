@@ -1,14 +1,10 @@
-import numpy as np
 import matplotlib.pyplot as plt
-import svglib
-from svglib.svglib import svg2rlg
-import io
-from reportlab.graphics import renderPDF, renderPM
-from skimage import data, filters, color, morphology
-from skimage.segmentation import flood, flood_fill
 
-import PIL.Image
-import PIL.ImageDraw
+from PIL import Image, ImageDraw
+import PIL.ImageColor
+import numpy as np
+from random import choice, randint, uniform, random
+
 import matplotlib.pyplot as plt
 
 from reportlab.graphics.shapes import *
@@ -16,86 +12,7 @@ from reportlab.graphics.shapes import *
 import logging
 logger = logging.getLogger("realms")
 
-# def flood_image(image, center_list, padding, coast_coordinates=None, debug=False):
-#     """Assumes an uncropped image and uncropped centers"""
-#     if isinstance(image, np.ndarray):
-#         data = image
-#     else:
-#         data = np.asarray(image)[padding:-padding,padding:-padding,0]
- 
-#     if debug:
-#         plt.figure(figsize=(30,30))
-#         plt.title("starting flooding image debug")
-#         plt.imshow(data)
-#         plt.show()
-
-#     for center in center_list:
-#         if coast_coordinates is not None:
-#             # check if too close to a coast
-#             target = np.array([center[0], center[1]])
-#             dis = np.sqrt(np.sum((coast_coordinates-target)**2, axis=1)).min()
-#             if dis < 10:
-#                 continue
-
-#         cropped_center = (int(center[0]-padding), int(center[1]-padding))
-#         # don't fill if you're alread on a black spot (!or a stroke!)
-#         if data[cropped_center[0], cropped_center[1]] > 0:
-#             data = flood_fill(data, cropped_center, 0)
-#             if debug:
-#                 logger.debug(f"flooding at {cropped_center}")
-#                 plt.figure(figsize=(30,30))
-#                 plt.imshow(data)
-#                 plt.plot(cropped_center[1], cropped_center[0], 'ro')
-#                 plt.show()
-#     return data
-
-# def flood_islands(image, drawing, padding, debug=False):
-#     """Fills in one island based off of its coast coordinates."""
-#     base = PIL.Image.new("L", image.shape, 1)
-#     drawer = PIL.ImageDraw.Draw(base)
-
-#     for group in drawing.contents[0].contents:
-#         points = group.contents[0].points
-#         if points[0]==points[-2] and points[1]==points[-1]: # if closed loop
-#             points = [(p*0.4+200)*2-padding for p in points]
-#             drawer.polygon(points, fill=0)
-
-#     data = np.asarray(base)
-#     data *= image
-#     data = np.clip(data, 0, 255)
-
-#     return data
-
-# def greedy_find_clusters(coordinates, k=4, max_radius=15, debug=False):
-#     """Finds clusters in a greedy fashion."""
-#     clusters = []
-    
-#     if debug:
-#         plt.figure(figsize=(10,10))
-#         plt.scatter(coordinates[:,0], coordinates[:,1], s=1)
-    
-#     while coordinates.shape[0] > 10:
-#         sel = coordinates[0]
-#         dis = np.linalg.norm(coordinates-sel, axis=1)
-#         close_idx = np.argwhere(dis<max_radius)
-#         if len(close_idx) < k:
-#             coordinates = coordinates[1:]
-#         else:
-#             clusters.append(coordinates[close_idx][:,0])
-#             coordinates = np.delete(coordinates, close_idx, axis=0)
-    
-#     # find centers of clusters
-#     centroids = []
-#     for cluster in clusters:
-#         centroid = cluster.mean(axis=0)
-#         centroids.append(centroid)
-#         if debug:
-#             plt.scatter(centroid[0], centroid[1])
-#     if debug:
-#         plt.show()
-#     return centroids
-
-def close_svg(drawing, rng=460, debug=False):
+def close_svg(drawing, rng=460, debug=False, islands_only=False):
     """This function tries to find open ends of paths and
     connects the ends while going around the image borders.
     
@@ -109,7 +26,7 @@ def close_svg(drawing, rng=460, debug=False):
         (1) list of lines that can be used to close the paths
         (2) drawing with closed paths
     """
-    LIMIT = 440
+    LIMIT = 200
     OUTPUT_SIZE = 800
     SCALING = 2
 
@@ -126,12 +43,13 @@ def close_svg(drawing, rng=460, debug=False):
         elif y > limit:
             return [x/y*bound, bound]
         else:
-            raise ValueError("edge not within limits.")
+            raise ValueError(f"edge not within limits.")
             
     # Stage 1: find the first set of open paths and closed paths (islands)
-    paths = drawing.contents[0].contents[0].contents
+    # paths = drawing.contents[0].contents[0].contents
 
     arrays = []
+    pure_islands = []
     for shape_group in drawing.contents[0].contents:
         path = shape_group.contents[0]
         plen = len(path.points)
@@ -140,7 +58,7 @@ def close_svg(drawing, rng=460, debug=False):
         # here we are injecting extra points
         if split_array[0]==split_array[-1]:
             # 'tis an island
-            pass
+            pure_islands.append(np.array(split_array))
         else:
             first, last = split_array[0], split_array[-1]
             # check coordinates on the far left:
@@ -280,22 +198,18 @@ def close_svg(drawing, rng=460, debug=False):
                 f2, l2 = b[0], b[-1]
                 if (l1==f2).all():
                     arrays[j] = np.vstack([a,b])
-#                     print(f"connected ij {i,j}")
                     donts.append(i)
                     break
                 elif (l2==f1).all():
                     arrays[j] = np.vstack([b,a])
-#                     print(f"connected ji {i,j}")
                     donts.append(i)
                     break
                 elif (f1==f2).all():
                     arrays[j] = np.vstack([np.flip(b,axis=0), a])
-#                     print(f"connected _ji{j,i}")
                     donts.append(i)
                     break
                 elif (l1==l2).all():
                     arrays[j] = np.vstack([a, np.flip(b, axis=0)])
-#                     print(f"connected i_j{i,j}")
                     donts.append(i)
                     break
 
@@ -314,6 +228,9 @@ def close_svg(drawing, rng=460, debug=False):
         plt.xlim(-rng-100,rng+100)
         plt.ylim(-rng-100,rng+100)
         plt.show()
+
+    if islands_only:
+        islands = pure_islands
         
     # Stage 5: scale and cast to PIL.Image
     for i in range(len(islands)):
@@ -355,3 +272,137 @@ def draw_cities(city_centers, himg=None, cimg=None, extra_scaling=1.):
             cdrawer.ellipse((x-r, y-r, x+r, y+r), fill=(200, 200, 200))
 
     return himg, cimg
+
+def put_cities(cities, hmap=None, cmap=None, extra_scaling=1., sealevel=0.3):
+    """
+    Args:
+        cities: (x, y, r, hdata, cdata).
+        himg:   PIL height nparray.
+        cimg:   PIL color nparray.
+    """
+    for city in cities:
+        y, x, r, hdata, cdata = city
+        y = int((y-32)*extra_scaling)
+        x = int((x-32)*extra_scaling)
+        r = int(r//2*extra_scaling)
+        
+        if hmap is not None:
+            mean_height = max(hmap[y-r:y+r, x-r:x+r].mean(), sealevel+0.05)
+            hmap[y-r:y+r, x-r:x+r] = np.where(hdata > 0, mean_height+hdata/6/255., hmap[y-r:y+r, x-r:x+r])
+        if cmap is not None:
+            cmap[y-r:y+r, x-r:x+r] = np.where(cdata > 0, cdata, cmap[y-r:y+r, x-r:x+r])
+
+    return hmap, cmap
+
+def generate_city(r=40):
+    from PIL import Image
+    dirt = PIL.ImageColor.getrgb("#50352E")
+
+    combinations = {
+        # type    # bld_wall, bld_roof, walls
+        "wood_0": ["#4d3933", "#543B34", "#483029"],
+        "wood_1": ["#867336", "#6C5327", "#70624A"],
+        # "sand_0": ["#A0A081", "#7E7E4E", "#A8A897"],
+        # "sand_1": ["#99795B", "#806A55", "#A98C83"],
+        # "stone_0": ["#9D9DA6", "#3F3F75", "#777788"],
+        # "stone_1": ["#8F8F8F", "#773838", "#767676"],
+        # "stone_2": ["#BABABA", "#B79036", "#281C00"],
+    }
+
+    selection = choice(list(combinations.keys()))
+    pad = 0
+    building_height = 20
+    highrise_height = 80
+    wall_height = 40
+    wall_sides = randint(4, 10)
+    wall_rot = randint(0,360)
+    base_height = 10
+    bw_color, br_color, w_color = [PIL.ImageColor.getrgb(color) for color in combinations[selection]]
+
+    himg = Image.new('L', (r+2*pad, r+2*pad), color = 0)
+    cimg = Image.new('RGB', (r+2*pad, r+2*pad), color = (0, 0, 0))
+    hdrawer = ImageDraw.Draw(himg)
+    cdrawer = ImageDraw.Draw(cimg)
+
+    # draw walls
+    hdrawer.regular_polygon((r//2+pad,r//2+pad,r//2), wall_sides, rotation=wall_rot, outline=wall_height, fill=base_height)
+    cdrawer.regular_polygon((r//2+pad,r//2+pad,r//2), wall_sides, rotation=wall_rot, outline=w_color, fill=dirt)
+
+    # get drawing data for logic
+    hdata = np.asarray(himg)
+    cdata = np.asarray(cimg)
+
+    # place houses
+    n_wall_pixels = (hdata>base_height).sum()
+    n_city_pixels = (cdata>0).sum()//3
+    n_available = n_city_pixels - n_wall_pixels
+    building_density = uniform(0.5, 0.8)
+    n_building_pixels = int(n_available*building_density)
+    chance_highrise = uniform(0.0, 0.3)
+
+    built = 0
+    while built < n_building_pixels:
+        x = randint(pad, r+pad-1)
+        y = randint(pad, r+pad-1)
+
+        if cdata[x,y,0] > 0 and hdata[x,y] == base_height:
+            cdata[x,y] = choice([bw_color, br_color])
+            hdata[x,y] = highrise_height if random() < chance_highrise else building_height
+            built += 1
+    
+    return hdata, cdata
+
+def slice_cont(orig, cmap, zscale=6, fill=11, water_color=[66, 109, 138]):
+    orig = (orig.astype(np.float)/zscale).astype(np.uint8)
+    min_val = orig.min()
+    max_val = orig.max()
+    bookkeeping = None
+    for i in range(min_val, max_val+1):
+        new = np.zeros(orig.shape)
+        c = np.where(orig==i, i, 0)
+        
+        # find spots where there is a gap in z
+        new[:,:-1] += (orig[:,:-1]-c[:,1:])*c[:,1:].clip(0,1)>1
+        new[:,1:] += (orig[:,1:]-c[:,:-1])*c[:,:-1].clip(0,1)>1
+        new[:-1,:] += (orig[:-1,:]-c[1:,:])*c[1:,:].clip(0,1)>1
+        new[1:,:] += (orig[1:,:]-c[:-1,:])*c[:-1,:].clip(0,1)>1
+        
+        # this checks if we reached the highest block
+        if bookkeeping is not None:
+            # also add from previous blocks
+            new += bookkeeping
+            # and update bookkeeping itself
+            bookkeeping = orig*new.clip(0,1)
+            bookkeeping = np.where(bookkeeping<=i, 0, bookkeeping)
+        
+        # create the final mask
+        new = new.clip(0,1)
+        # keep track of how much we actually have to fill
+        if bookkeeping is None:
+            bookkeeping = orig*new
+            
+        # add sides
+        new[:,:1] = np.where(orig[:,:1]>i, 1, new[:,:1])
+        new[:,-1:] = np.where(orig[:,-1:]>i, 1, new[:,-1:])
+        new[:1] = np.where(orig[:1]>i, 1, new[:1])
+        new[-1:] = np.where(orig[-1:]>i, 1, new[-1:])
+                
+        final = (new + np.where(orig==i, 1, 0)).clip(0,1)      
+            
+        output = np.tile(final, (3,1,1))
+        output = np.transpose(output, (1,2,0)).astype(np.uint8)*255
+        output = np.where(output==255, cmap, 0)
+        
+        # add water
+        x = np.where(((i>orig) & (orig<fill) & (i<fill)), 1, 0)
+        x = np.expand_dims(x, -1)
+        water = np.where(
+            ((output==0) & (x==1)),
+            water_color,
+            [0,0,0],
+        )
+        output += water.astype(np.uint8)
+                        
+        img = PIL.Image.fromarray(output)
+        img = img.convert("RGBA")
+        img.save(f"output/hslices/{i:04d}.png")

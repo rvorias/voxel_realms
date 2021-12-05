@@ -35,7 +35,7 @@ from coloring import cold, moderate, savanna, desert, snow
 class ParameterFlow(FlowSpec):
     @step
     def start(self):
-        self.realm_paths = glob.glob("svgs/*.svg")
+        self.realm_paths = glob.glob("svgs/*.svg")[:10]
 
         self.config = OmegaConf.load("pipeline/config.yaml")
 
@@ -251,17 +251,23 @@ class ParameterFlow(FlowSpec):
 
     @step
     def scale_heights(self):
-        hmap_normalized = (self.combined - self.combined.min()) / (self.combined.max() - self.combined.min())
+        hmap = (self.combined - self.combined.min()) / (self.combined.max() - self.combined.min())
 
         # first transform the real sea scaling the same as we are going
         # to transform the map itself
         coast_height_rescaled = (self.REL_SEA_SCALING - self.combined.min()) / (self.combined.max() - self.combined.min())
         # rescale the height of the map
         self.hmap = np.where(
-            hmap_normalized > coast_height_rescaled,
-            (hmap_normalized - coast_height_rescaled) * self.HSCALES[self.hscale] + coast_height_rescaled,
-            hmap_normalized
+            hmap > coast_height_rescaled,
+            (hmap-coast_height_rescaled)*self.HSCALES[self.hscale]+coast_height_rescaled,
+            hmap
         )
+        self.combined = np.where(
+            self.combined > 0,
+            self.combined * self.HSCALES[self.hscale],
+            self.combined
+        )
+
         self.next(self.export_heightmap)
 
     @step

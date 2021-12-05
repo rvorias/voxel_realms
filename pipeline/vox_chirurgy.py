@@ -31,11 +31,15 @@ def run(realm_number):
 
     print(f"donor water idx {water_idx_donor}")
 
+    best_dis = 9999
+    water_idx_acceptor = 0
+    # water color can sometimes we quantized differently
     for i, c in enumerate(m_acceptor._palette):
-        if c.r == water_color[0] and c.g == water_color[1] and c.b == water_color[2]:
+        dis = abs(c.r-water_color[0]) + abs(c.g-water_color[1]) + abs(c.b-water_color[2])
+        if dis < best_dis:
+            best_dis = dis
             water_idx_acceptor = i
-            break
-    
+
     print(f"acceptor water idx {water_idx_acceptor}")
 
     d_mat = m_donor.materials[-water_idx_donor-1]

@@ -26,6 +26,7 @@ class SVGExtractor:
         self.scale = scale
         self.mode = None
         self.load_drawing()
+        self.drawing = self.drawing_orig
 
     def coast(self):
     	# self.load_drawing()

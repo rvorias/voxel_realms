@@ -9,14 +9,14 @@ from subprocess import Popen
 config = OmegaConf.load("pipeline/config.yaml")
 f = partial(run_pipeline, config=config)
 
-paths = glob.glob("svgs/*.svg")
+paths = glob.glob("svgs/*.svg")[:10]
 
 if __name__ == '__main__':
     print(f"Found svgs: {paths}")
-    # with Pool(2) as p:
-    #     p.map(f, paths)
+    with Pool(10) as p:
+        p.map(f, paths)
 
-    commands = [f'python3 pipeline/flow.py --no-pylint run --realm_path {p} --config_path pipeline/config.yaml' for p in paths]
-    procs = [Popen(i, shell=True) for i in commands]
-    for p in procs:
-        p.wait()
+    # commands = [f'python3 pipeline/flow.py --no-pylint run --realm_path {p} --config_path pipeline/config.yaml' for p in paths]
+    # procs = [Popen(i, shell=True) for i in commands]
+    # for p in procs:
+    #     p.wait()

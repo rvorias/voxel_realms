@@ -54,13 +54,13 @@ def run_coloring(color_functions, hmap):
         x = overlap(x, y)
     return x
 
-def inject_water_tile(base, landmap, color):
-    for x in range(landmap.shape[0]):
-        for y in range(landmap.shape[1]):
-            if landmap[x, y] == 0:
-                base[x,y,:] = color
-                logger.info(f"Injected water pixel at {x}, {y}.")
-                return base
+def inject_water_tile(colorqmap, landmask, color):
+    for x in range(landmask.shape[0]):
+        for y in range(landmask.shape[1]):
+            if landmask[x, y] == 0:
+                colorqmap[x,y,:] = color
+                logger.info(f"Injected water pixel {color} at {x}, {y}.")
+                return colorqmap
 
 def dirt_1(hmap):
     mu, sig = [0.05, 0.3], [0.01, 0.2]

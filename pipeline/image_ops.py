@@ -1,16 +1,17 @@
-import matplotlib.pyplot as plt
-
-from PIL import Image, ImageDraw
-import PIL.ImageColor
-import numpy as np
+import logging
 from random import choice, randint, uniform, random
+
+import numpy as np
+import PIL.ImageColor
+from PIL import Image, ImageDraw
 
 import matplotlib.pyplot as plt
 
 from reportlab.graphics.shapes import *
 
-import logging
 logger = logging.getLogger("realms")
+
+import shutil
 
 def close_svg(drawing, rng=460, debug=False, islands_only=False):
     """This function tries to find open ends of paths and
@@ -302,11 +303,11 @@ def generate_city(r=40):
         # type    # bld_wall, bld_roof, walls
         "wood_0": ["#4d3933", "#543B34", "#483029"],
         "wood_1": ["#867336", "#6C5327", "#70624A"],
-        # "sand_0": ["#A0A081", "#7E7E4E", "#A8A897"],
-        # "sand_1": ["#99795B", "#806A55", "#A98C83"],
-        # "stone_0": ["#9D9DA6", "#3F3F75", "#777788"],
-        # "stone_1": ["#8F8F8F", "#773838", "#767676"],
-        # "stone_2": ["#BABABA", "#B79036", "#281C00"],
+        "sand_0": ["#A0A081", "#7E7E4E", "#A8A897"],
+        "sand_1": ["#99795B", "#806A55", "#A98C83"],
+        "stone_0": ["#9D9DA6", "#3F3F75", "#777788"],
+        "stone_1": ["#8F8F8F", "#773838", "#767676"],
+        "stone_2": ["#BABABA", "#B79036", "#281C00"],
     }
 
     selection = choice(list(combinations.keys()))
@@ -352,7 +353,32 @@ def generate_city(r=40):
     
     return hdata, cdata
 
-def slice_cont(orig, cmap, zscale=6, fill=11, water_color=[66, 109, 138]):
+def slice_cont(
+    orig,
+    cmap,
+    realm_number,
+    water_mask,
+    water_color,
+    hmap_cities,
+    fill=10,
+    zscale=6,
+    ):
+    """Slice a heightmap in z values and colorize.
+    There are multiple tricks used here.
+    
+    Args:
+        orig:           Original heightmap, expected in [0,255] uints.
+        cmap:           Colormap.
+        realm_number:   Realm number used to serialize height pngs.
+        water_mask:          Water mask.
+        water_color:    Water color.
+        hmap_cities:    Cities hmap.
+        fill:           Fill water until this level, depends on zscale.
+        zscale:         Divisor of 255 (max height).
+    
+    Outputs:
+        Slices of pngs in output/hslice_{realm_number}.
+    """
     orig = (orig.astype(np.float)/zscale).astype(np.uint8)
     min_val = orig.min()
     max_val = orig.max()
@@ -382,16 +408,26 @@ def slice_cont(orig, cmap, zscale=6, fill=11, water_color=[66, 109, 138]):
             bookkeeping = orig*new
             
         # add sides
-        new[:,:1] = np.where(orig[:,:1]>i, 1, new[:,:1])
-        new[:,-1:] = np.where(orig[:,-1:]>i, 1, new[:,-1:])
-        new[:1] = np.where(orig[:1]>i, 1, new[:1])
-        new[-1:] = np.where(orig[-1:]>i, 1, new[-1:])
+        sides = np.zeros_like(new)
+        sides[:,:1] = np.where(orig[:,:1]>i, 1, 0)
+        sides[:,-1:] = np.where(orig[:,-1:]>i, 1, 0)
+        sides[:1] = np.where(orig[:1]>i, 1, 0)
+        sides[-1:] = np.where(orig[-1:]>i, 1, 0)
                 
-        final = (new + np.where(orig==i, 1, 0)).clip(0,1)      
-            
+        final = (new + np.where(orig==i, 1, 0) + sides).clip(0,1)      
+        
+        # colorize
         output = np.tile(final, (3,1,1))
-        output = np.transpose(output, (1,2,0)).astype(np.uint8)*255
-        output = np.where(output==255, cmap, 0)
+        output = np.transpose(output, (1,2,0)).astype(np.uint8)
+        output = np.where(output==1, cmap, 0)
+
+        # add ground coloring
+        sides_ground_1 = np.where(((sides>0)&(i < orig-1)), 1, 0)
+        sides_ground_2 = np.where(((sides>0)&(i < orig-4)), 1, 0)
+        sides_ground_1 = np.expand_dims(sides_ground_1, -1)
+        sides_ground_2 = np.expand_dims(sides_ground_2, -1)
+        output = np.where(sides_ground_1==1, [127,127,127], output)
+        output = np.where(sides_ground_2==1, [100,100,100], output)
         
         # add water
         x = np.where(((i>orig) & (orig<fill) & (i<fill)), 1, 0)
@@ -401,8 +437,20 @@ def slice_cont(orig, cmap, zscale=6, fill=11, water_color=[66, 109, 138]):
             water_color,
             [0,0,0],
         )
-        output += water.astype(np.uint8)
-                        
-        img = PIL.Image.fromarray(output)
+        output = output+water
+
+        # add rivers if also given
+        x = np.where(((i==orig+1) & (water_mask==1) & (hmap_cities==0) & (x[...,0]==0)), 1, 0)
+        x = np.expand_dims(x, -1)
+        water = np.where(
+            x==1,
+            water_color,
+            [0,0,0],
+        )
+        output = output+water
+    
+        img = PIL.Image.fromarray(output.astype(np.uint8))
         img = img.convert("RGBA")
-        img.save(f"output/hslices/{i:04d}.png")
+        if not os.path.exists(f"output/hslices_{realm_number}"):
+            os.mkdir(f"output/hslices_{realm_number}")
+        img.save(f"output/hslices_{realm_number}/{i:04d}.png")

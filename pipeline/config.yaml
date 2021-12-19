@@ -6,7 +6,7 @@ pipeline:
   extra_scaling: 1.
 terrain:
   land:
-    disc_radius: 1.
+    disc_radius: 2.
     max_delta: 0.05 # `max_delta` determines the maximum difference in neighboring points (to give the effect of talus slippage)
     river_downcutting_constant: 0.2 # `river_downcutting_constant` affects how deeply rivers cut into terrain (higher means more downcutting).
     directional_inertia: 0.4 # indicates how straight the rivers are (0 = no directional inertia, 1 = total directional inertia).
@@ -15,7 +15,7 @@ terrain:
     coastal_dropoff: 20. # 80. high: very small slope towards sea, low: abrupt change to sea
   water_padding: 64
   water:
-    disc_radius: 1.
+    disc_radius: 2.
     max_delta: 0.2
     river_downcutting_constant: 0.1
     directional_inertia: 0.4

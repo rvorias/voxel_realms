@@ -1,12 +1,11 @@
 #/bin/sh
 RealmNumber=$1
 
-# python pipeline/run.py svgs/$RealmNumber.svg
+python pipeline/run.py svgs/$RealmNumber.svg
 
 wine FileToVox-v1.13-win/FileToVox.exe \
-    --i output/hslices \
+    --i output/hslices_$RealmNumber \
     -o MagicaVoxel-0.99.6.4-win64/vox/wmap_$RealmNumber \
-    --p output/palette_$RealmNumber.png
 
 python pipeline/vox_chirurgy.py $RealmNumber
 

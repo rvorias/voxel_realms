@@ -29,8 +29,10 @@ from svg_extraction import SVGExtractor, get_heightline_centers, get_city_coordi
 from image_ops import close_svg, slice_cont, generate_city, put_cities
 from utils import *
 
-from coloring import inject_water_tile, run_coloring
-from coloring import cold, moderate, savanna, desert, snow
+from perlin_numpy import generate_fractal_noise_2d
+
+from coloring import inject_water_tile, run_coloring, color_from_json
+from coloring import biomes, biome_pairs
 
 import subprocess
 
@@ -52,7 +54,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
     # TODO: put this in coloring.py
     WATER_COLORS = [
         np.array([ 74., 134., 168.]),
-        # np.array([ 18.,  59., 115.]),
+        np.array([ 18.,  59., 115.]),
         np.array([ 66., 109., 138.])
     ]
     PAD = 32
@@ -239,7 +241,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         water_depth = water_depth[wpad:-wpad,wpad:-wpad] if wpad > 0 else water_depth
 
         EXTRA_OFFSET = 0.04 # used to enchance contrast with rivers
-        combined = terrain_height - REL_SEA_SCALING*_final_mask*water_depth
+        combined = 1.1*terrain_height - REL_SEA_SCALING*_final_mask*water_depth
 
         # fix rivers height
         # combined = np.where(((combined > 0) & (original_rivers > 0)), 55, combined)
@@ -317,12 +319,14 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         #     himg=himg,
         #     extra_scaling=config.pipeline.extra_scaling)
 
-        hmap, _ = put_cities(
+        hmap_with_cities, _ = put_cities(
             cities,
-            hmap = hmap,
+            hmap = np.copy(hmap),
             extra_scaling=config.pipeline.extra_scaling,
             sealevel=rescaled_coast_height
         )
+        hmap_cities = hmap_with_cities - hmap
+        hmap = hmap_with_cities      
 
         if debug:
             plt.figure(figsize=debug_img_size)
@@ -345,13 +349,37 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
     # COLORING
     #############################################
 
-    water_color = choice(WATER_COLORS)
-    
     with step("Coloring"):
-        biomes = [moderate, cold, snow, savanna, desert]
-        biome = choice(biomes)
-        colorqmap = run_coloring(biome, combined)
-    
+        rand.seed(realm_number)
+        switch_biome = random() > 0.5
+        primary_biome, secondary_biome = choice(biome_pairs)
+        water_color = choice(WATER_COLORS)
+        if switch_biome:
+            primary_biome, secondary_biome = secondary_biome, primary_biome
+        # primary_colorqmap = run_coloring(biomes[primary_biome], combined)
+        # secondary_colorqmap = run_coloring(biomes[secondary_biome], combined)
+        primary_colorqmap = color_from_json(combined, "ice")
+        # secondary_colorqmap = color_from_json(combined, secondary_biome)
+        # biome_noise = generate_fractal_noise_2d(primary_colorqmap.shape[:2], (2,2), 5)
+        # # mix biomes
+        # biome_noise = np.expand_dims(biome_noise, -1)
+        # biome_mask = np.expand_dims(final_mask[PAD:-PAD,PAD:-PAD], -1)
+        # colorqmap = np.where(biome_mask*(biome_noise>0.1), secondary_colorqmap, primary_colorqmap)
+        colorqmap = primary_colorqmap
+
+        # if debug:
+        #     plt.figure(figsize=debug_img_size)
+        #     plt.title("anti final mask")
+            
+        #     plt.imshow(biome_mask*(biome_noise>0.1))
+        #     plt.show()
+        #     plt.figure(figsize=debug_img_size)
+        #     plt.title("biome noise")
+        #     plt.imshow(biome_noise>0)
+        #     plt.show()
+        #     print(f"primary biome: {primary_biome}")
+        #     print(f"secondary biome: {secondary_biome}")
+
     #############################################
     # EXPORT 2
     #############################################
@@ -374,7 +402,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         with step("Injecting water color"):
             # oops, quick reconvert
             colorqmap = np.array(colorqmap_export)
-            colorqmap = inject_water_tile(colorqmap, final_mask, water_color) #m1 is the landmap
+            # colorqmap = inject_water_tile(colorqmap, final_mask, water_color) #m1 is the landmap
             colorqmap_export = colorqmap.astype(np.uint8)
             colorqmap_export = PIL.Image.fromarray(colorqmap_export)
 
@@ -417,6 +445,8 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             int(water_color[1]),
             int(water_color[2]),
         ]
+        data["steps"][0]["primary_biome"] = primary_biome
+        data["steps"][0]["secondary_biome"] = secondary_biome
         # data["steps"][0]["hm_param"] = HSCALES[hscale][1]
         # data["steps"][0]["Limit"] = HSCALES[hscale][2]
         with open(f"output/flood_{realm_number}.json", "w") as json_file:
@@ -428,7 +458,14 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         palette.save(f"output/palette_{realm_number}.png")
 
     with step("Creating slices"):
-        slice_cont(hmap, colorqmap.astype(np.uint8), water_color=water_color)
+        slice_cont(
+            hmap,
+            colorqmap.astype(np.uint8),
+            realm_number=realm_number,
+            water_mask=_final_mask[PAD:-PAD,PAD:-PAD],
+            water_color=water_color,
+            hmap_cities=hmap_cities
+        )
 
     if debug:
         # also save intermediate files

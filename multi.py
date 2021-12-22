@@ -9,7 +9,7 @@ from subprocess import Popen
 config = OmegaConf.load("pipeline/config.yaml")
 f = partial(run_pipeline, config=config)
 
-paths = glob.glob("svgs/*.svg")[:10]
+paths = glob.glob("svgs/*.svg")[:200]
 
 import time
 

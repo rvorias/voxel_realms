@@ -27,7 +27,7 @@ def colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs):
 
     select_idx = needs_coloring * pnoise
 
-    colors = [color+cdiff for cdiff in color_diffs]
+    colors = [np.clip(color+cdiff, 0, 255) for cdiff in color_diffs]
 
     final = np.expand_dims(needs_coloring, -1)*np.take(colors, select_idx, axis=0)
 
@@ -338,6 +338,6 @@ biome_pairs = [
     ["savannah",  "desert"],
     ["forest",    "taiga"],
     ["taiga",     "tundra"],
-    ["taiga",     "arctic"],
-    ["tundra",    "arctic"]
+    ["taiga",     "ice"],
+    ["tundra",    "ice"]
 ]

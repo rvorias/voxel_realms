@@ -10,9 +10,11 @@ import click
 import json
 
 @click.command()
-@click.argument("realm_number", type=int)
-def run(realm_number):
+@click.argument("realm_number")
+def parse(realm_number):
+    operate(realm_number)
 
+def operate(realm_number):
     with open(f"output/flood_{realm_number}.json") as json_file:
         data = json.load(json_file)
         water_color = data["steps"][0]["water_color"]
@@ -74,5 +76,4 @@ def run(realm_number):
     writer.write()
 
 if __name__=="__main__":
-    print("test")
-    run()
+    parse()

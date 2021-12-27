@@ -13,6 +13,7 @@ omegaconf = "*"
 pillow = "*"
 scikit-image = "*"
 svglib = "*"
+requests = "*"
 
 [requires]
 python_version = "3.8"

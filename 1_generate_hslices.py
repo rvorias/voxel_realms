@@ -9,11 +9,11 @@ from subprocess import Popen
 config = OmegaConf.load("pipeline/config.yaml")
 f = partial(run_pipeline, config=config)
 
-paths = glob.glob("svgs/*.svg")[:5]
+paths = glob.glob("svgs/*.svg")
 
 import time
 
-POOL_SIZE = 2
+POOL_SIZE = 8
 
 if __name__ == '__main__':
     start = time.time()

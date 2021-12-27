@@ -68,7 +68,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
     debug_img_size = (10,10)
     
     with step("Set seeds and init"):
-        realm_number = int(realm_path.split("/")[-1][:-4])
+        realm_number = int(realm_path.replace("svgs/","").replace("svgs\\","").replace(".svg",""))
         logging.info(f"Processing realm number: {realm_number}")
         np.random.seed(realm_number)
         rand.seed(realm_number)

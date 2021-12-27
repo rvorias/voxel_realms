@@ -9,9 +9,7 @@ from pipeline.vox_chirurgy import operate
 from subprocess import Popen
 
 paths = glob.glob("svgs/*.svg")[:5]
-realm_numbers = [int(p.split("/")[-1][:-4]) for p in paths]
-
-import time
+realm_numbers = [int(p.replace("svgs/","").replace("svgs\\","").replace(".svg","")) for p in paths]
 
 POOL_SIZE = 2
 

@@ -361,7 +361,7 @@ def slice_cont(
     water_color,
     hmap_cities,
     fill=10,
-    zscale=6,
+    zscale=5,
     ):
     """Slice a heightmap in z values and colorize.
     There are multiple tricks used here.

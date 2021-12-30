@@ -20,7 +20,7 @@ async def download(i):
 
 async def main():
     for i in range(NUM_SVGS):
-        if i not in done:
+        if i+1 not in done:
             await download(i+1)
 
 asyncio.run(main())

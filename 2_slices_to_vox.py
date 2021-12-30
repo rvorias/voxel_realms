@@ -5,8 +5,8 @@ from subprocess import Popen
 ##################
 POOL_SIZE = 2
 N_REALMS = 5
-IN_FOLDER = "./output"
-OUT_FOLDER = "./voxmaps"
+IN_FOLDER = "output"
+OUT_FOLDER = "voxmaps"
 ##################
 
 if os.name == 'nt':

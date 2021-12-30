@@ -4,13 +4,9 @@ Author: rvorias
 
 import copy
 import numpy as np
-import matplotlib.pyplot as plt
-import svglib
 from svglib.svglib import svg2rlg
 import io
 from reportlab.graphics import renderPDF, renderPM
-# from skimage import data, filters, color, morphology
-# from skimage.segmentation import flood, flood_fill
 
 import PIL.Image
 import matplotlib.pyplot as plt
@@ -30,11 +26,11 @@ class SVGExtractor:
 
     def coast(self):
         self.mode = "coast"
-    	return self.get_cls(Path, "strokeWidth", 4.0)
+        return self.get_cls(Path, "strokeWidth", 4.0)
 
     def cities(self):
         self.mode = "cities"
-    	return self.get_cls(Circle)
+        return self.get_cls(Circle)
 
     def height(self):
         self.mode = "height"
@@ -83,7 +79,7 @@ class SVGExtractor:
         img = PIL.Image.open(buffer)
         return img
     
-    def show(self, size=(10,10)):
+    def show(self, size=(10, 10)):
         plt.figure(figsize=size)
         plt.imshow(self.get_img())
         plt.show()

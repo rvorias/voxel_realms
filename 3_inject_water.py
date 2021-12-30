@@ -7,8 +7,8 @@ from pipeline.vox_chirurgy import operate
 ##################
 POOL_SIZE = 2
 N_REALMS = 5
-IN_FOLDER = "./voxmaps"
-OUT_FOLDER = "./voxmaps"
+IN_FOLDER = "voxmaps"
+OUT_FOLDER = "voxmaps"
 ##################
 
 paths = glob.glob(f"{IN_FOLDER}/wmap_*.vox")

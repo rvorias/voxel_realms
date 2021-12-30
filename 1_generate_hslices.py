@@ -12,11 +12,11 @@ f = partial(run_pipeline, config=config)
 ##################
 POOL_SIZE = 2
 N_REALMS = 5
-IN_FOLDER = "./svgs"
-OUT_FOLDER = "./output"
+IN_FOLDER = "svgs"
+OUT_FOLDER = "output"
 ##################
 
-paths = glob.glob(f"{IN_FOLDER}/*.svgs")
+paths = glob.glob(f"{IN_FOLDER}/*.svg")
 idxs = [path.replace(f"{IN_FOLDER}/", "").replace(".svg", "") for path in paths]
 done_folders = glob.glob(f"{OUT_FOLDER}/height_*.png")
 done_idxs = [path.replace(f"{OUT_FOLDER}/height_", "").replace(".png", "") for path in paths]
@@ -25,7 +25,6 @@ candidates = candidates[:N_REALMS]
 
 if __name__=="__main__":
     start = time.time()
-    print(f"Found svgs: {paths}")
     with Pool(POOL_SIZE) as p:
         p.map(f, paths)
 

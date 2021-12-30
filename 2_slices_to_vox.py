@@ -1,33 +1,34 @@
-from multiprocessing import Pool
-from functools import partial
+import os
 import glob
-from omegaconf import OmegaConf
-from pipeline.run import run_pipeline
-
 from subprocess import Popen
 
-config = OmegaConf.load("pipeline/config.yaml")
-f = partial(run_pipeline, config=config)
+##################
+POOL_SIZE = 2
+N_REALMS = 5
+IN_FOLDER = "./output"
+OUT_FOLDER = "./voxmaps"
+##################
 
-paths = glob.glob("output/height_*")
-
-import os
 if os.name == 'nt':
     FTV_EXEC = "FileToVox\\FileToVox.exe"
 else:
     FTV_EXEC = "FileToVox-v1.13-win/FileToVox.exe"
 
-POOL_SIZE = 4
+paths = glob.glob(f"{IN_FOLDER}/height_*.png")
+idxs = [path.replace(f"{IN_FOLDER}/height_", "").replace(".png", "") for path in paths]
+done_folders = glob.glob(f"{OUT_FOLDER}/wmap_*.vox")
+done_idxs = [path.replace(f"{OUT_FOLDER}/wmap_", "").replace(".vox", "") for path in paths]
+candidates = [path for path in paths if path not in done_idxs]
+candidates = candidates[:N_REALMS]
 
 if __name__ == '__main__':
     commands = []
-    for p in paths:
-        realm_number = p.split('_')[-1][:-4]
+    for realm_number in candidates:
         commands.append(
             f"{FTV_EXEC} " +
-            f"--i output/hslices_{realm_number} " +
-            f"--o vox/wmap_{realm_number}")
-    print(commands[:3])
+            f"--i {IN_FOLDER}/hslices_{realm_number}" +
+            f"--o {OUT_FOLDER}/wmap_{realm_number}"
+        )
     procs = [Popen(i, shell=True) for i in commands]
     for p in procs:
         p.wait()

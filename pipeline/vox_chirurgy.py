@@ -19,8 +19,8 @@ def operate(realm_number):
         data = json.load(json_file)
         water_color = data["steps"][0]["water_color"]
 
-    donor = VoxParser("vox/donor.vox")
-    acceptor = VoxParser(f"vox/wmap_{realm_number}.vox")
+    donor = VoxParser("voxmaps/donor.vox")
+    acceptor = VoxParser(f"voxmaps/wmap_{realm_number}.vox")
 
     m_donor = donor.parse()
     m_acceptor = acceptor.parse()
@@ -68,11 +68,11 @@ def operate(realm_number):
         except AttributeError:
             pass
 
-    writer = VoxWriter("vox/temp.vox", m_acceptor)
+    writer = VoxWriter("voxmaps/temp.vox", m_acceptor)
     writer.write()
     # we somehow need to do it again ..
-    m_temp = VoxParser("vox/temp.vox")
-    writer = VoxWriter(f"vox/fmap_{realm_number:04d}.vox", m_temp.parse())
+    m_temp = VoxParser("voxmaps/temp.vox")
+    writer = VoxWriter(f"voxmaps/fmap_{realm_number:04d}.vox", m_temp.parse())
     writer.write()
 
 if __name__=="__main__":

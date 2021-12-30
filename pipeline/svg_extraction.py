@@ -29,20 +29,19 @@ class SVGExtractor:
         self.drawing = self.drawing_orig
 
     def coast(self):
-    	# self.load_drawing()
+        self.mode = "coast"
     	return self.get_cls(Path, "strokeWidth", 4.0)
 
     def cities(self):
-    	# self.load_drawing()
+        self.mode = "cities"
     	return self.get_cls(Circle)
 
     def height(self):
-        # self.load_drawing()
+        self.mode = "height"
         return self.get_cls(Line)
 
     def rivers(self):
         self.mode = "rivers"
-        # self.load_drawing()
         return self.get_cls(Path, "strokeWidth", 2.0)
     
     def load_drawing(self):
@@ -90,7 +89,7 @@ class SVGExtractor:
         plt.show()
 
 def put_downstream(idx, shape_groups):
-    """Puts water downstream"""
+    """Give rivers a wider trunk based on the number of branches."""
     shape_groups[idx].contents[0].strokeWidth += .5
     
     this_end_x, this_end_y = shape_groups[idx].contents[0].points[-2:]

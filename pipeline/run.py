@@ -19,6 +19,7 @@ import skimage.filters
 import json
 
 import logging
+
 logger = logging.getLogger("realms")
 
 sys.path.append("terrain-erosion-3-ways/")
@@ -36,26 +37,28 @@ from coloring import biomes, biome_pairs
 
 import subprocess
 
+
 def norm(x, n=None):
     """norm `x` by `n`"""
     if n is None:
         n = x
-    return (x-n.min())/(n.max()-n.min())
+    return (x - n.min()) / (n.max() - n.min())
+
 
 def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
     REL_SEA_SCALING = 0.32
     HSCALES = {
         "lo": 0.33,
         "me": 0.66,
-        "hi":  1.00,
+        "hi": 1.00,
     }
     # hscale = choice(list(HSCALES))
     hscale = "hi"
     # TODO: put this in coloring.py
     WATER_COLORS = [
-        np.array([ 74., 134., 168.]),
-        np.array([ 18.,  59., 115.]),
-        np.array([ 66., 109., 138.])
+        np.array([74., 134., 168.]),
+        np.array([18., 59., 115.]),
+        np.array([66., 109., 138.])
     ]
     PAD = 32
 
@@ -65,10 +68,10 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         logger.setLevel(logging.INFO)
 
     # set some often-used parameters
-    debug_img_size = (10,10)
-    
+    debug_img_size = (10, 10)
+
     with step("Set seeds and init"):
-        realm_number = int(realm_path.replace("svgs/","").replace("svgs\\","").replace(".svg",""))
+        realm_number = int(realm_path.replace("svgs/", "").replace("svgs\\", "").replace(".svg", "").replace("../", ""))
         logging.info(f"Processing realm number: {realm_number}")
         np.random.seed(realm_number)
         rand.seed(realm_number)
@@ -84,17 +87,17 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         extractor = SVGExtractor(realm_path, scale=config.svg.scaling)
         if debug:
             extractor.show(debug_img_size)
-        
+
     with step("Extracting coast"):
         coast_drawing = extractor.coast()
-        
+
     with step("Extracting heightlines"):
         heightline_drawing = extractor.height()
 
     #############################################
     # MASKING
     #############################################
-    
+
     with step("Starting ground-sea mask logic"):
         # uses a fixed padding of 32
         mask = close_svg(coast_drawing, debug=debug)
@@ -102,7 +105,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         # check if we need to flip
         centers = get_heightline_centers(heightline_drawing)
         sum = _sum = 0
-        _mask = (mask-1)//255
+        _mask = (mask - 1) // 255
         for center in centers:
             sum += mask[int(center[0]), int(center[1])]
             _sum += _mask[int(center[0]), int(center[1])]
@@ -114,12 +117,12 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         mask = mask.clip(0, 1)
 
         # extend land towards edges
-        h,w = mask.shape
+        h, w = mask.shape
         for i in range(PAD):
-            mask[:,i] = mask[:,PAD]
-            mask[:,-i-1] = mask[:,w-PAD]
-            mask[i,:] = mask[PAD,:]
-            mask[-i-1,:] = mask[h-PAD,:]
+            mask[:, i] = mask[:, PAD]
+            mask[:, -i - 1] = mask[:, w - PAD]
+            mask[i, :] = mask[PAD, :]
+            mask[-i - 1, :] = mask[h - PAD, :]
 
         if debug:
             logger.debug(f"mask_shape: {mask.shape}")
@@ -128,23 +131,23 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             plt.imshow(mask)
             plt.show()
 
-    #------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------
     with step("----Extracting rivers"):
         extractor.rivers()
-        rivers = np.asarray(extractor.get_img()) # rivers is now [0,255]
+        rivers = np.asarray(extractor.get_img())  # rivers is now [0,255]
         original_rivers = rivers.copy()
 
         # make bit thicker
         rivers = skimage.filters.gaussian(
             rivers,
-            sigma=config.pipeline.river_gaussian/config.pipeline.extra_scaling
-        )[...,0] # rivers is now [0,1]
-        rivers = (rivers < 0.99)*1
+            sigma=config.pipeline.river_gaussian / config.pipeline.extra_scaling
+        )[..., 0]  # rivers is now [0,1]
+        rivers = (rivers < 0.99) * 1
         rivers = rivers.astype(np.uint8)
-        original_rivers = skimage.filters.gaussian(original_rivers, sigma=0.2)[...,0] # rivers is now [0,1]
-        original_rivers = (original_rivers < 0.85)*1
+        original_rivers = skimage.filters.gaussian(original_rivers, sigma=0.2)[..., 0]  # rivers is now [0,1]
+        original_rivers = (original_rivers < 0.85) * 1
         original_rivers = original_rivers.astype(np.uint8)
-        
+
         if debug:
             plt.figure(figsize=debug_img_size)
             plt.title("fat rivers")
@@ -154,10 +157,10 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             plt.title("original rivers")
             plt.imshow(original_rivers)
             plt.show()
-    
+
     with step("----Combining coast and rivers"):
-        final_mask = (mask&~rivers)*255
-        anti_final_mask = np.where(final_mask==255, 0, 255)
+        final_mask = (mask & ~rivers) * 255
+        anti_final_mask = np.where(final_mask == 255, 0, 255)
         if debug:
             print(f"unique final_mask: {np.unique(final_mask)}")
             print(f"unique mask: {np.unique(mask)}")
@@ -166,12 +169,12 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             plt.title("final water")
             plt.imshow(final_mask)
             plt.show()
-    
+
     #############################################
     # GENERATION
     #############################################
-    
-    #------------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------------
     # image_scaling
     if config.pipeline.extra_scaling != 1:
         import scipy.ndimage
@@ -180,31 +183,30 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         rivers = scipy.ndimage.zoom(rivers, config.pipeline.extra_scaling, order=0)
         original_rivers = scipy.ndimage.zoom(original_rivers, config.pipeline.extra_scaling, order=0)
 
-
     with step("----Terrain generation"):
         wpad = config.terrain.water_padding
         if wpad > 0:
             wp = np.zeros(
-                (final_mask.shape[0]+2*wpad,
-                final_mask.shape[1]+2*wpad))
-            wp[wpad:-wpad,wpad:-wpad] = final_mask
-            final_mask=wp
+                (final_mask.shape[0] + 2 * wpad,
+                 final_mask.shape[1] + 2 * wpad))
+            wp[wpad:-wpad, wpad:-wpad] = final_mask
+            final_mask = wp
         terrain_height = generate_terrain(final_mask, **config.terrain.land)
         if debug:
             plt.figure(figsize=debug_img_size)
             plt.title("terrain height")
             plt.imshow(terrain_height)
             plt.show()
-    
-    #------------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------------
     with step("----Underwater generation"):
         wpad = config.terrain.water_padding
         if wpad > 0:
             wp = np.ones(
-                (anti_final_mask.shape[0]+2*wpad,
-                anti_final_mask.shape[1]+2*wpad))*255
-            wp[wpad:-wpad,wpad:-wpad] = anti_final_mask
-            anti_final_mask=wp
+                (anti_final_mask.shape[0] + 2 * wpad,
+                 anti_final_mask.shape[1] + 2 * wpad)) * 255
+            wp[wpad:-wpad, wpad:-wpad] = anti_final_mask
+            anti_final_mask = wp
         water_depth = generate_terrain(anti_final_mask, **config.terrain.water)
 
         if debug:
@@ -214,8 +216,8 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             plt.show()
 
         # some postprocessing to make sure that land is at 0
-        land_level = np.where(anti_final_mask==0, water_depth, 0)
-        land_level_mean = (land_level[land_level>0]).mean()
+        land_level = np.where(anti_final_mask == 0, water_depth, 0)
+        land_level_mean = (land_level[land_level > 0]).mean()
         # water_depth = water_depth.clip(land_level_mean, water_depth.max())
         # water_depth = norm(water_depth)
         if debug:
@@ -232,24 +234,24 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             plt.title("water depth")
             plt.imshow(water_depth)
             plt.show()
-    
-    #------------------------------------------------------------------------------
-    with step("----Combining terrain and water heights"):
-        final_mask = final_mask[wpad:-wpad,wpad:-wpad] if wpad > 0 else final_mask
-        _final_mask = final_mask < 255
-        terrain_height = terrain_height[wpad:-wpad,wpad:-wpad] if wpad > 0 else terrain_height
-        water_depth = water_depth[wpad:-wpad,wpad:-wpad] if wpad > 0 else water_depth
 
-        EXTRA_OFFSET = 0.04 # used to enchance contrast with rivers
-        combined = 1.1*terrain_height - REL_SEA_SCALING*_final_mask*water_depth
+    # ------------------------------------------------------------------------------
+    with step("----Combining terrain and water heights"):
+        final_mask = final_mask[wpad:-wpad, wpad:-wpad] if wpad > 0 else final_mask
+        _final_mask = final_mask < 255
+        terrain_height = terrain_height[wpad:-wpad, wpad:-wpad] if wpad > 0 else terrain_height
+        water_depth = water_depth[wpad:-wpad, wpad:-wpad] if wpad > 0 else water_depth
+
+        EXTRA_OFFSET = 0.04  # used to enchance contrast with rivers
+        combined = 1.1 * terrain_height - REL_SEA_SCALING * _final_mask * water_depth
 
         # fix rivers height
         # combined = np.where(((combined > 0) & (original_rivers > 0)), 55, combined)
         # combined = np.where(original_rivers > 0, REL_SEA_SCALING, combined+EXTRA_OFFSET)
 
         if config.pipeline.extra_scaling != 1:
-            PAD = int(PAD*config.pipeline.extra_scaling)
-        combined = combined[PAD:-PAD,PAD:-PAD]
+            PAD = int(PAD * config.pipeline.extra_scaling)
+        combined = combined[PAD:-PAD, PAD:-PAD]
 
         # this snippet takes care of holes in the sea floor
         # sometimes the bottom layer gets remove so we just set one voxel to be the lowest.
@@ -275,10 +277,10 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
     #############################################
     # EXPORT 1
     #############################################
-    
+
     with step("Scaling height map"):
         hmap = norm(combined)
-        
+
         # transform the sea level
         rescaled_coast_height = norm(0., combined)
         # rescale the height of the map
@@ -288,7 +290,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             print(f"rescaled coast height = {rescaled_coast_height}.")
         hmap = np.where(
             hmap > rescaled_coast_height,
-            (hmap-rescaled_coast_height)*HSCALES[hscale]+rescaled_coast_height,
+            (hmap - rescaled_coast_height) * HSCALES[hscale] + rescaled_coast_height,
             hmap
         )
         if debug:
@@ -311,7 +313,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
     with step("Generating and drawing cities onto heightmap"):
         cities = []
         for city_center in city_centers:
-            city_height, city_colors = generate_city(int(city_center[2]*config.pipeline.extra_scaling))
+            city_height, city_colors = generate_city(int(city_center[2] * config.pipeline.extra_scaling))
             cities.append((*city_center, city_height, city_colors))
 
         # himg, _ = draw_cities(
@@ -321,12 +323,12 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
 
         hmap_with_cities, _ = put_cities(
             cities,
-            hmap = np.copy(hmap),
+            hmap=np.copy(hmap),
             extra_scaling=config.pipeline.extra_scaling,
             sealevel=rescaled_coast_height
         )
         hmap_cities = hmap_with_cities - hmap
-        hmap = hmap_with_cities      
+        hmap = hmap_with_cities
 
         if debug:
             plt.figure(figsize=debug_img_size)
@@ -335,7 +337,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             plt.show()
 
     with step("Exporting height map"):
-        hmap = (hmap*255).astype(np.uint8)
+        hmap = (hmap * 255).astype(np.uint8)
         himg = PIL.Image.fromarray(hmap).convert('L')
         if config.export.size > 0:
             himg = himg.resize(
@@ -344,7 +346,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             )
         himg = PIL.ImageOps.mirror(himg)
         himg.save(f"output/height_{realm_number}.png")
-    
+
     #############################################
     # COLORING
     #############################################
@@ -370,7 +372,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         # if debug:
         #     plt.figure(figsize=debug_img_size)
         #     plt.title("anti final mask")
-            
+
         #     plt.imshow(biome_mask*(biome_noise>0.1))
         #     plt.show()
         #     plt.figure(figsize=debug_img_size)
@@ -383,7 +385,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
     #############################################
     # EXPORT 2
     #############################################
-    
+
     with step("Exporting color map"):
         colorqmap_export = colorqmap.astype(np.uint8)
 
@@ -395,10 +397,10 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             # )
             _, colorqmap_export = put_cities(
                 cities,
-                cmap = colorqmap_export,
+                cmap=colorqmap_export,
                 extra_scaling=config.pipeline.extra_scaling
             )
-        
+
         with step("Injecting water color"):
             # oops, quick reconvert
             colorqmap = np.array(colorqmap_export)
@@ -422,7 +424,6 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         colorqmap_export = PIL.ImageOps.mirror(colorqmap_export)
         colorqmap_export.save(f"output/color_{realm_number}.png")
 
-
     #############################################
     # Prepare for FileToVox
     #############################################
@@ -433,13 +434,13 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         for i, c in enumerate(list(colors_used)):
             if np.array_equal(c, water_color):
                 break
-        water_index = len(list(colors_used))-i
+        water_index = len(list(colors_used)) - i
         logger.debug(f"water_index: {water_index}")
 
         with open("resources/flood.json") as json_file:
             data = json.load(json_file)
         # change flooding water index
-        data["steps"][0]["TargetColorIndex"] = water_index-1
+        data["steps"][0]["TargetColorIndex"] = water_index - 1
         data["steps"][0]["water_color"] = [
             int(water_color[0]),
             int(water_color[1]),
@@ -452,7 +453,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         with open(f"output/flood_{realm_number}.json", "w") as json_file:
             json.dump(data, json_file)
 
-        palette = np.expand_dims(np.unique(np.reshape(colorqmap, (-1,3)), axis=0), 0)
+        palette = np.expand_dims(np.unique(np.reshape(colorqmap, (-1, 3)), axis=0), 0)
         palette = PIL.Image.fromarray(palette)
 
         palette.save(f"output/palette_{realm_number}.png")
@@ -462,7 +463,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             hmap,
             colorqmap.astype(np.uint8),
             realm_number=realm_number,
-            water_mask=_final_mask[PAD:-PAD,PAD:-PAD],
+            water_mask=_final_mask[PAD:-PAD, PAD:-PAD],
             water_color=water_color,
             hmap_cities=hmap_cities
         )
@@ -479,6 +480,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
                 )
             img = PIL.ImageOps.mirror(img)
             img.save(f"debug/debug_{name}.png")
+
         export_np_array(rivers, "rivers")
         export_np_array(final_mask, "final_mask")
         export_np_array(terrain_height, "terrain_height")
@@ -504,13 +506,15 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
     # --hm=32 \
     # --cm output/color_{realm_number}.png", shell=True)
 
+
 @click.command()
 @click.argument("realm_path")
 @click.option("--config", default="pipeline/config.yaml")
 @click.option("--debug", default=False)
 def parse(realm_path, config, debug):
-	config = OmegaConf.load(config)
-	run_pipeline(realm_path, config, debug)
+    config = OmegaConf.load(config)
+    run_pipeline(realm_path, config, debug)
 
-if __name__=="__main__":
-	parse()
+
+if __name__ == "__main__":
+    parse()

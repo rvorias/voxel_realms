@@ -14,7 +14,7 @@ with open("resources/database.json", encoding="utf8") as file:
 
 async def download(i):
     r = requests.get(data[str(i)]["image"], allow_redirects=True)
-    with open(f"svgs/{i+1}.svg", "wb") as f:
+    with open(f"svgs/{i}.svg", "wb") as f:
         f.write(r.content)
     print(i)
 

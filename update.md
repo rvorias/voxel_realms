@@ -44,3 +44,5 @@ Right now the pipeline is at v4.
 - Size
   - Right now the vox map is 700x700 but I've made changes to the pipeline such that it also supports higher res maps.
 - Clouds can really add a sense of scale to the realm, but are not yet put into code.
+
+-[ ] render 2 views: orthogonal / perspective

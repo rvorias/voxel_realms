@@ -4,13 +4,9 @@ Author: rvorias
 
 import copy
 import numpy as np
-import matplotlib.pyplot as plt
-import svglib
 from svglib.svglib import svg2rlg
 import io
 from reportlab.graphics import renderPDF, renderPM
-# from skimage import data, filters, color, morphology
-# from skimage.segmentation import flood, flood_fill
 
 import PIL.Image
 import matplotlib.pyplot as plt
@@ -29,20 +25,19 @@ class SVGExtractor:
         self.drawing = self.drawing_orig
 
     def coast(self):
-    	# self.load_drawing()
-    	return self.get_cls(Path, "strokeWidth", 4.0)
+        self.mode = "coast"
+        return self.get_cls(Path, "strokeWidth", 4.0)
 
     def cities(self):
-    	# self.load_drawing()
-    	return self.get_cls(Circle)
+        self.mode = "cities"
+        return self.get_cls(Circle)
 
     def height(self):
-        # self.load_drawing()
+        self.mode = "height"
         return self.get_cls(Line)
 
     def rivers(self):
         self.mode = "rivers"
-        # self.load_drawing()
         return self.get_cls(Path, "strokeWidth", 2.0)
     
     def load_drawing(self):
@@ -84,13 +79,13 @@ class SVGExtractor:
         img = PIL.Image.open(buffer)
         return img
     
-    def show(self, size=(10,10)):
+    def show(self, size=(10, 10)):
         plt.figure(figsize=size)
         plt.imshow(self.get_img())
         plt.show()
 
 def put_downstream(idx, shape_groups):
-    """Puts water downstream"""
+    """Give rivers a wider trunk based on the number of branches."""
     shape_groups[idx].contents[0].strokeWidth += .5
     
     this_end_x, this_end_y = shape_groups[idx].contents[0].points[-2:]

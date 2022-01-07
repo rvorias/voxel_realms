@@ -13,6 +13,7 @@ logger = logging.getLogger("realms")
 
 import shutil
 
+
 def close_svg(drawing, rng=460, debug=False, islands_only=False):
     """This function tries to find open ends of paths and
     connects the ends while going around the image borders.
@@ -22,12 +23,12 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
     Args:
         - drawing: the drawing containing paths from extractor.coast()
         - rng: distance of the edge wrt center
+        - islands_only: only return islands
     
     Returns:
-        (1) list of lines that can be used to close the paths
-        (2) drawing with closed paths
+        bitmap of closed islands
     """
-    LIMIT = 200
+    LIMIT = 50
     OUTPUT_SIZE = 800
     SCALING = 2
 
@@ -35,17 +36,18 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
         """Extrapolates points lying at ‘limit‘."""
         assert y != 0
         assert x != 0
+        print(x, y)
         if x < -limit:
-            return [-bound, y/x*-bound]
+            return [-bound, y / x * -bound]
         elif x > limit:
-            return [bound, y/x*bound] 
+            return [bound, y / x * bound]
         elif y < -limit:
-            return [x/y*-bound, -bound]
+            return [x / y * -bound, -bound]
         elif y > limit:
-            return [x/y*bound, bound]
+            return [x / y * bound, bound]
         else:
             raise ValueError(f"edge not within limits.")
-            
+
     # Stage 1: find the first set of open paths and closed paths (islands)
     # paths = drawing.contents[0].contents[0].contents
 
@@ -54,13 +56,14 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
     for shape_group in drawing.contents[0].contents:
         path = shape_group.contents[0]
         plen = len(path.points)
-        split_array = [[path.points[x],path.points[x+1]] for x in range(0,plen,2)]
-        
+        split_array = [[path.points[x], path.points[x + 1]] for x in range(0, plen, 2)]
+
         # here we are injecting extra points
-        if split_array[0]==split_array[-1]:
+        if split_array[0] == split_array[-1]:
             # 'tis an island
             pure_islands.append(np.array(split_array))
         else:
+            print(split_array)
             first, last = split_array[0], split_array[-1]
             # check coordinates on the far left:
             first = extend(first[0], first[1], rng, LIMIT)
@@ -69,11 +72,11 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
             new_array.extend(split_array)
             new_array.append(last)
             split_array = new_array
-        
+
         np_array = np.array(split_array)
-        if len(np_array>3):
+        if len(np_array > 3):
             arrays.append(np_array)
-        
+
     # Stage 2: start from the upper left and sort all end points anti-clockwise.
     begends = []
     begends_list = []
@@ -84,31 +87,31 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
         })
         begends_list.append(a[0])
         begends_list.append(a[-1])
-    
+
     lefts = [
         a for a in begends_list
         if -rng == a[0]
     ]
     lefts.sort(key=lambda x: -x[1])
-    
+
     bottoms = [
         a for a in begends_list
         if -rng == a[1]
     ]
     bottoms.sort(key=lambda x: x[0])
-    
+
     rights = [
         a for a in begends_list
         if rng == a[0]
     ]
     rights.sort(key=lambda x: x[1])
-    
+
     tops = [
         a for a in begends_list
         if rng == a[1]
     ]
     tops.sort(key=lambda x: -x[0])
-    
+
     # Stage 3: draw lines in order to connect the sorted endpoints.
     lines = []
 
@@ -166,7 +169,7 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
 
     if draw:
         lines.append([now, up_left])
-    
+
     # Stage 4: merge open paths and split off closed paths.
     # In the end, everything should become a closed path.
     def island_check(arrays):
@@ -174,13 +177,14 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
         nislands = []
         for a in arrays:
             first, last = a[0], a[-1]
-            if (first==last).all():
+            if (first == last).all():
                 islands.append(a)
             else:
                 nislands.append(a)
         return islands, nislands
-    islands, arrays = island_check(arrays) 
-    
+
+    islands, arrays = island_check(arrays)
+
     if debug:
         print(f"{len(islands)}")
 
@@ -188,33 +192,34 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
     for line in lines:
         arrays.append(np.vstack(line))
 
+    # chain the paths
     while len(arrays) > 0:
-        donts = [] # bookkeep which arrays to skip at the end
+        donts = []  # bookkeep which arrays to skip at the end
         alen = len(arrays)
         for i in range(alen):
             a = arrays[i]
             f1, l1 = a[0], a[-1]
-            for j in range(i+1, alen):
+            for j in range(i + 1, alen):
                 b = arrays[j]
                 f2, l2 = b[0], b[-1]
-                if (l1==f2).all():
-                    arrays[j] = np.vstack([a,b])
+                if (l1 == f2).all():
+                    arrays[j] = np.vstack([a, b])
                     donts.append(i)
                     break
-                elif (l2==f1).all():
-                    arrays[j] = np.vstack([b,a])
+                elif (l2 == f1).all():
+                    arrays[j] = np.vstack([b, a])
                     donts.append(i)
                     break
-                elif (f1==f2).all():
-                    arrays[j] = np.vstack([np.flip(b,axis=0), a])
+                elif (f1 == f2).all():
+                    arrays[j] = np.vstack([np.flip(b, axis=0), a])
                     donts.append(i)
                     break
-                elif (l1==l2).all():
+                elif (l1 == l2).all():
                     arrays[j] = np.vstack([a, np.flip(b, axis=0)])
                     donts.append(i)
                     break
 
-        arrays = [a for (i,a) in enumerate(arrays) if i not in donts]
+        arrays = [a for (i, a) in enumerate(arrays) if i not in donts]
 
         new_islands, arrays = island_check(arrays)
         islands.extend(new_islands)
@@ -224,27 +229,28 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
         print(f"{len(arrays)}")
 
         al = np.vstack(islands)
-        plt.figure(figsize=(10,10))
-        plt.scatter(al[:,0], -al[:,1], s=4)
-        plt.xlim(-rng-100,rng+100)
-        plt.ylim(-rng-100,rng+100)
+        plt.figure(figsize=(10, 10))
+        plt.scatter(al[:, 0], -al[:, 1], s=4)
+        plt.xlim(-rng - 100, rng + 100)
+        plt.ylim(-rng - 100, rng + 100)
         plt.show()
 
     if islands_only:
         islands = pure_islands
-        
+
     # Stage 5: scale and cast to PIL.Image
     for i in range(len(islands)):
-        islands[i] = (islands[i]*0.4+200)*SCALING
-    
-    base = PIL.Image.new("L", (OUTPUT_SIZE,OUTPUT_SIZE), 0)
+        islands[i] = (islands[i] * 0.4 + 200) * SCALING
+
+    base = PIL.Image.new("L", (OUTPUT_SIZE, OUTPUT_SIZE), 0)
     drawer = PIL.ImageDraw.Draw(base)
 
     for island in islands:
         drawer.polygon(list(island.flatten()), fill=1)
 
-    data = np.asarray(base)    
+    data = np.asarray(base)
     return data
+
 
 def draw_cities(city_centers, himg=None, cimg=None, extra_scaling=1.):
     """
@@ -260,19 +266,20 @@ def draw_cities(city_centers, himg=None, cimg=None, extra_scaling=1.):
 
     for city_center in city_centers:
         y, x, r = city_center
-        x = (x-32)*extra_scaling
-        y = (y-32)*extra_scaling
-        r = r/2*extra_scaling
+        x = (x - 32) * extra_scaling
+        y = (y - 32) * extra_scaling
+        r = r / 2 * extra_scaling
         # h = hmap[x, y]
         # c = cmap[x, y]
         # print(x,y,r,h,c)
 
         if himg is not None:
-            hdrawer.ellipse((x-r, y-r, x+r, y+r), fill=(200))
+            hdrawer.ellipse((x - r, y - r, x + r, y + r), fill=(200))
         if cimg is not None:
-            cdrawer.ellipse((x-r, y-r, x+r, y+r), fill=(200, 200, 200))
+            cdrawer.ellipse((x - r, y - r, x + r, y + r), fill=(200, 200, 200))
 
     return himg, cimg
+
 
 def put_cities(cities, hmap=None, cmap=None, extra_scaling=1., sealevel=0.3):
     """
@@ -283,17 +290,19 @@ def put_cities(cities, hmap=None, cmap=None, extra_scaling=1., sealevel=0.3):
     """
     for city in cities:
         y, x, r, hdata, cdata = city
-        y = int((y-32)*extra_scaling)
-        x = int((x-32)*extra_scaling)
-        r = int(r//2*extra_scaling)
-        
+        y = int((y - 32) * extra_scaling)
+        x = int((x - 32) * extra_scaling)
+        r = int(r // 2 * extra_scaling)
+
         if hmap is not None:
-            mean_height = max(hmap[y-r:y+r, x-r:x+r].mean(), sealevel+0.05)
-            hmap[y-r:y+r, x-r:x+r] = np.where(hdata > 0, mean_height+hdata/6/255., hmap[y-r:y+r, x-r:x+r])
+            mean_height = max(hmap[y - r:y + r, x - r:x + r].mean(), sealevel + 0.05)
+            hmap[y - r:y + r, x - r:x + r] = np.where(hdata > 0, mean_height + hdata / 6 / 255.,
+                                                      hmap[y - r:y + r, x - r:x + r])
         if cmap is not None:
-            cmap[y-r:y+r, x-r:x+r] = np.where(cdata > 0, cdata, cmap[y-r:y+r, x-r:x+r])
+            cmap[y - r:y + r, x - r:x + r] = np.where(cdata > 0, cdata, cmap[y - r:y + r, x - r:x + r])
 
     return hmap, cmap
+
 
 def generate_city(r=40):
     from PIL import Image
@@ -316,53 +325,56 @@ def generate_city(r=40):
     highrise_height = 80
     wall_height = 40
     wall_sides = randint(4, 10)
-    wall_rot = randint(0,360)
+    wall_rot = randint(0, 360)
     base_height = 10
     bw_color, br_color, w_color = [PIL.ImageColor.getrgb(color) for color in combinations[selection]]
 
-    himg = Image.new('L', (r+2*pad, r+2*pad), color = 0)
-    cimg = Image.new('RGB', (r+2*pad, r+2*pad), color = (0, 0, 0))
+    himg = Image.new('L', (r + 2 * pad, r + 2 * pad), color=0)
+    cimg = Image.new('RGB', (r + 2 * pad, r + 2 * pad), color=(0, 0, 0))
     hdrawer = ImageDraw.Draw(himg)
     cdrawer = ImageDraw.Draw(cimg)
 
     # draw walls
-    hdrawer.regular_polygon((r//2+pad,r//2+pad,r//2), wall_sides, rotation=wall_rot, outline=wall_height, fill=base_height)
-    cdrawer.regular_polygon((r//2+pad,r//2+pad,r//2), wall_sides, rotation=wall_rot, outline=w_color, fill=dirt)
+    hdrawer.regular_polygon((r // 2 + pad, r // 2 + pad, r // 2), wall_sides, rotation=wall_rot, outline=wall_height,
+                            fill=base_height)
+    cdrawer.regular_polygon((r // 2 + pad, r // 2 + pad, r // 2), wall_sides, rotation=wall_rot, outline=w_color,
+                            fill=dirt)
 
     # get drawing data for logic
     hdata = np.asarray(himg)
     cdata = np.asarray(cimg)
 
     # place houses
-    n_wall_pixels = (hdata>base_height).sum()
-    n_city_pixels = (cdata>0).sum()//3
+    n_wall_pixels = (hdata > base_height).sum()
+    n_city_pixels = (cdata > 0).sum() // 3
     n_available = n_city_pixels - n_wall_pixels
     building_density = uniform(0.5, 0.8)
-    n_building_pixels = int(n_available*building_density)
+    n_building_pixels = int(n_available * building_density)
     chance_highrise = uniform(0.0, 0.3)
 
     built = 0
     while built < n_building_pixels:
-        x = randint(pad, r+pad-1)
-        y = randint(pad, r+pad-1)
+        x = randint(pad, r + pad - 1)
+        y = randint(pad, r + pad - 1)
 
-        if cdata[x,y,0] > 0 and hdata[x,y] == base_height:
-            cdata[x,y] = choice([bw_color, br_color])
-            hdata[x,y] = highrise_height if random() < chance_highrise else building_height
+        if cdata[x, y, 0] > 0 and hdata[x, y] == base_height:
+            cdata[x, y] = choice([bw_color, br_color])
+            hdata[x, y] = highrise_height if random() < chance_highrise else building_height
             built += 1
-    
+
     return hdata, cdata
 
+
 def slice_cont(
-    orig,
-    cmap,
-    realm_number,
-    water_mask,
-    water_color,
-    hmap_cities,
-    fill=10,
-    zscale=6,
-    ):
+        orig,
+        cmap,
+        realm_number,
+        water_mask,
+        water_color,
+        hmap_cities,
+        fill=10,
+        zscale=5,
+):
     """Slice a heightmap in z values and colorize.
     There are multiple tricks used here.
     
@@ -379,76 +391,76 @@ def slice_cont(
     Outputs:
         Slices of pngs in output/hslice_{realm_number}.
     """
-    orig = (orig.astype(np.float)/zscale).astype(np.uint8)
+    orig = (orig.astype(np.float) / zscale).astype(np.uint8)
     min_val = orig.min()
     max_val = orig.max()
     bookkeeping = None
-    for i in range(min_val, max_val+1):
+    for i in range(min_val, max_val + 1):
         new = np.zeros(orig.shape)
-        c = np.where(orig==i, i, 0)
-        
+        c = np.where(orig == i, i, 0)
+
         # find spots where there is a gap in z
-        new[:,:-1] += (orig[:,:-1]-c[:,1:])*c[:,1:].clip(0,1)>1
-        new[:,1:] += (orig[:,1:]-c[:,:-1])*c[:,:-1].clip(0,1)>1
-        new[:-1,:] += (orig[:-1,:]-c[1:,:])*c[1:,:].clip(0,1)>1
-        new[1:,:] += (orig[1:,:]-c[:-1,:])*c[:-1,:].clip(0,1)>1
-        
+        new[:, :-1] += (orig[:, :-1] - c[:, 1:]) * c[:, 1:].clip(0, 1) > 1
+        new[:, 1:] += (orig[:, 1:] - c[:, :-1]) * c[:, :-1].clip(0, 1) > 1
+        new[:-1, :] += (orig[:-1, :] - c[1:, :]) * c[1:, :].clip(0, 1) > 1
+        new[1:, :] += (orig[1:, :] - c[:-1, :]) * c[:-1, :].clip(0, 1) > 1
+
         # this checks if we reached the highest block
         if bookkeeping is not None:
             # also add from previous blocks
             new += bookkeeping
             # and update bookkeeping itself
-            bookkeeping = orig*new.clip(0,1)
-            bookkeeping = np.where(bookkeeping<=i, 0, bookkeeping)
-        
+            bookkeeping = orig * new.clip(0, 1)
+            bookkeeping = np.where(bookkeeping <= i, 0, bookkeeping)
+
         # create the final mask
-        new = new.clip(0,1)
+        new = new.clip(0, 1)
         # keep track of how much we actually have to fill
         if bookkeeping is None:
-            bookkeeping = orig*new
-            
+            bookkeeping = orig * new
+
         # add sides
         sides = np.zeros_like(new)
-        sides[:,:1] = np.where(orig[:,:1]>i, 1, 0)
-        sides[:,-1:] = np.where(orig[:,-1:]>i, 1, 0)
-        sides[:1] = np.where(orig[:1]>i, 1, 0)
-        sides[-1:] = np.where(orig[-1:]>i, 1, 0)
-                
-        final = (new + np.where(orig==i, 1, 0) + sides).clip(0,1)      
-        
+        sides[:, :1] = np.where(orig[:, :1] > i, 1, 0)
+        sides[:, -1:] = np.where(orig[:, -1:] > i, 1, 0)
+        sides[:1] = np.where(orig[:1] > i, 1, 0)
+        sides[-1:] = np.where(orig[-1:] > i, 1, 0)
+
+        final = (new + np.where(orig == i, 1, 0) + sides).clip(0, 1)
+
         # colorize
-        output = np.tile(final, (3,1,1))
-        output = np.transpose(output, (1,2,0)).astype(np.uint8)
-        output = np.where(output==1, cmap, 0)
+        output = np.tile(final, (3, 1, 1))
+        output = np.transpose(output, (1, 2, 0)).astype(np.uint8)
+        output = np.where(output == 1, cmap, 0)
 
         # add ground coloring
-        sides_ground_1 = np.where(((sides>0)&(i < orig-1)), 1, 0)
-        sides_ground_2 = np.where(((sides>0)&(i < orig-4)), 1, 0)
+        sides_ground_1 = np.where(((sides > 0) & (i < orig - 1)), 1, 0)
+        sides_ground_2 = np.where(((sides > 0) & (i < orig - 4)), 1, 0)
         sides_ground_1 = np.expand_dims(sides_ground_1, -1)
         sides_ground_2 = np.expand_dims(sides_ground_2, -1)
-        output = np.where(sides_ground_1==1, [127,127,127], output)
-        output = np.where(sides_ground_2==1, [100,100,100], output)
-        
+        output = np.where(sides_ground_1 == 1, [127, 127, 127], output)
+        output = np.where(sides_ground_2 == 1, [100, 100, 100], output)
+
         # add water
-        x = np.where(((i>orig) & (orig<fill) & (i<fill)), 1, 0)
+        x = np.where(((i > orig) & (orig < fill) & (i < fill)), 1, 0)
         x = np.expand_dims(x, -1)
         water = np.where(
-            ((output==0) & (x==1)),
+            ((output == 0) & (x == 1)),
             water_color,
-            [0,0,0],
+            [0, 0, 0],
         )
-        output = output+water
+        output = output + water
 
         # add rivers if also given
-        x = np.where(((i==orig+1) & (water_mask==1) & (hmap_cities==0) & (x[...,0]==0)), 1, 0)
+        x = np.where(((i == orig + 1) & (water_mask == 1) & (hmap_cities == 0) & (x[..., 0] == 0)), 1, 0)
         x = np.expand_dims(x, -1)
         water = np.where(
-            x==1,
+            x == 1,
             water_color,
-            [0,0,0],
+            [0, 0, 0],
         )
-        output = output+water
-    
+        output = output + water
+
         img = PIL.Image.fromarray(output.astype(np.uint8))
         img = img.convert("RGBA")
         if not os.path.exists(f"output/hslices_{realm_number}"):

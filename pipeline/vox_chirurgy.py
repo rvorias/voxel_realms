@@ -10,15 +10,17 @@ import click
 import json
 
 @click.command()
-@click.argument("realm_number", type=int)
-def run(realm_number):
+@click.argument("realm_number")
+def parse(realm_number):
+    operate(realm_number)
 
+def operate(realm_number):
     with open(f"output/flood_{realm_number}.json") as json_file:
         data = json.load(json_file)
         water_color = data["steps"][0]["water_color"]
 
-    donor = VoxParser("MagicaVoxel-0.99.6.4-win64/vox/donor.vox")
-    acceptor = VoxParser(f"MagicaVoxel-0.99.6.4-win64/vox/wmap_{realm_number}.vox")
+    donor = VoxParser("voxmaps/donor.vox")
+    acceptor = VoxParser(f"voxmaps/wmap_{realm_number}.vox")
 
     m_donor = donor.parse()
     m_acceptor = acceptor.parse()
@@ -66,13 +68,12 @@ def run(realm_number):
         except AttributeError:
             pass
 
-    writer = VoxWriter("MagicaVoxel-0.99.6.4-win64/vox/temp.vox", m_acceptor)
+    writer = VoxWriter("voxmaps/temp.vox", m_acceptor)
     writer.write()
     # we somehow need to do it again ..
-    m_temp = VoxParser("MagicaVoxel-0.99.6.4-win64/vox/temp.vox")
-    writer = VoxWriter(f"MagicaVoxel-0.99.6.4-win64/vox/fmap_{realm_number:04d}.vox", m_temp.parse())
+    m_temp = VoxParser("voxmaps/temp.vox")
+    writer = VoxWriter(f"voxmaps/fmap_{realm_number:04d}.vox", m_temp.parse())
     writer.write()
 
 if __name__=="__main__":
-    print("test")
-    run()
+    parse()

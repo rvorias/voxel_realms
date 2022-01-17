@@ -3,7 +3,8 @@ svg:
   padding: 16
 pipeline:
   river_gaussian: 1.2
-  extra_scaling: 1.
+  extra_scaling: 1. # this scales all the output
+  general_padding: 32 # general bitmask padding
 terrain:
   land:
     disc_radius: 2.
@@ -13,7 +14,6 @@ terrain:
     default_water_level: 1.0 # How much water is assigned by default to each point
     evaporation_rate: 0.2 # How much water is evaporated as it traverses from along each river edge.
     coastal_dropoff: 20. # 80. high: very small slope towards sea, low: abrupt change to sea
-  water_padding: 64
   water:
     disc_radius: 2.
     max_delta: 0.2
@@ -22,6 +22,12 @@ terrain:
     default_water_level: 1.
     evaporation_rate: 0.3
     coastal_dropoff: 100.
+  water_padding: 64
+  relative_sea_depth_scaling: 0.32 # this scales back the sea so that it doesn't run too deep
+  height_scales: # scales to vary the terrain height by, each realm will pick one of these at random
+    lo: 0.33
+    me: 0.66
+    hi: 1.00
 export:
   size: -1 # is this is > 0 it does a force resize
   out_dir: "MagicaVoxel-0.99.6.4-win64/vox"

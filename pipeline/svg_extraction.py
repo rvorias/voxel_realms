@@ -1,19 +1,20 @@
 """
+This file holds logic to extract data from an svg.
 Author: rvorias
 """
 
+import logging
 import copy
 import numpy as np
-from svglib.svglib import svg2rlg
 import io
-from reportlab.graphics import renderPDF, renderPM
+
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPM
+from reportlab.graphics.shapes import *
 
 import PIL.Image
 import matplotlib.pyplot as plt
 
-from reportlab.graphics.shapes import *
-
-import logging
 logger = logging.getLogger('realms')
 
 class SVGExtractor:
@@ -122,26 +123,6 @@ def get_city_coordinates(drawing, scaling=2):
         ))
     return centers
 
-# def get_island_coordinates(drawing, scaling=2):
-#     """Calculated in uncropped coordinates"""
-#     islands = []
-#     for group in drawing.contents[0].contents:
-#         points = group.contents[0].points
-#         if points[0]==points[-2] and points[1]==points[-1]: # if closed loop
-#             x = [points[i] for i in range(0, len(points)-2, 2)]
-#             y = [points[i] for i in range(1, len(points)-1, 2)]
-#             ans = (np.array([y, x]).T*0.4+200)*scaling
-#             islands.append(ans)
-#     return islands
-
-# def get_island_centers(drawing, scaling=2):
-#     """Calculated in uncropped coordinates"""
-#     island_coordinates = get_island_coordinates(drawing, scaling)
-#     centers = []
-#     for coords in island_coordinates:
-#         centers.append(coords.mean(axis=0))
-#     return centers
-
 def get_heightline_centers(drawing, scaling=2):
     line_coordinates = []
     for line in drawing.contents[0].contents:
@@ -149,39 +130,3 @@ def get_heightline_centers(drawing, scaling=2):
         line_coordinates.append(line_center)
     line_coordinates = np.vstack(line_coordinates)
     return (line_coordinates*0.4+200)*scaling
-
-# def get_orthogonal_samples(path, scaling=2):
-#     """This function takes a path and iterates on its points.
-#     It draws a line between two subsequent points (a,b) and finds the line that
-#     is orthogonal and goes through the center (o1,o2). It then returns two points
-#     on either side of the original line.
-#             o1
-#             |
-#     a ===== c ===== b
-#             |
-#             o2
-#     """
-#     DIS_FROM_CENTER = 7
-    
-#     samples1 = []
-#     samples2 = []
-#     for i in range(0, len(path.points)-2, 2):
-#         a = np.array([path.points[i], path.points[i+1]])
-#         b = np.array([path.points[i+2], path.points[i+3]])
-        
-#         if a[1] == b[1]:
-#             print("y aligned")
-#         elif a[0] == b[0]:
-#             print("x aligned")
-#         else:
-#             m_inv = -(b[0]-a[0])/(b[1]-a[1])
-#             center = (a+b)/2
-#             c = center[1] - m_inv*center[0]
-#             other_1 = np.array([center[0]+1, m_inv*(center[0]+1)+c])
-#             other_2 = np.array([center[0]-1, m_inv*(center[0]-1)+c])
-#             dis = np.linalg.norm(other_1-center)
-#             other_1 = np.array([center[0]+DIS_FROM_CENTER/dis, m_inv*(center[0]+DIS_FROM_CENTER/dis)+c-2])
-#             other_2 = np.array([center[0]-DIS_FROM_CENTER/dis, m_inv*(center[0]-DIS_FROM_CENTER/dis)+c-2])
-#             samples1.append((other_1*0.4+200)*scaling)
-#             samples2.append((other_2*0.4+200)*scaling)
-#     return samples1, samples2

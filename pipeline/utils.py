@@ -1,16 +1,17 @@
-# poisson disc sampling credits to https://github.com/emulbreh/bridson
-import numpy as np
-from random import random, Random
-from math import cos, sin, floor, sqrt, pi, ceil
-
 import sys
 sys.path.append("terrain-erosion-3-ways/")
 from river_network import *
+
+import numpy as np
+from random import random, Random
+from math import cos, sin, floor, sqrt, pi, ceil
+import matplotlib.pyplot as plt
 
 import logging
 logger = logging.getLogger("realms")
 
 class step:
+    """This class is used as a wrapper for pipeline steps."""
     def __init__(self, text):
         self.text = text
     def __enter__(self):
@@ -18,13 +19,28 @@ class step:
     def __exit__(self ,type, value, traceback):
         logger.info("    \---DONE")
 
+def imshow(image, title=None):
+    plt.figure(figsize=(10,10))
+    plt.title(title)
+    plt.imshow(image)
+    plt.show()
+
+def norm(x, n=None):
+    """norm `x` by `n`"""
+    if n is None:
+        n = x
+    return (x - n.min()) / (n.max() - n.min())
+
 def euclidean_distance(a, b):
     dx = a[0] - b[0]
     dy = a[1] - b[1]
     return dx * dx + dy * dy
 
 def poisson_disc_samples(width, height, r, k=5, distance=euclidean_distance, random=random):
-    #TODO: add source for this function (got it from github)
+    """
+    Optimized poisson disc sampling.
+    Credits to https://github.com/emulbreh/bridson
+    """
     
     tau = 2 * pi
     cellsize = r / sqrt(2)
@@ -75,8 +91,8 @@ def poisson_disc_samples(width, height, r, k=5, distance=euclidean_distance, ran
     return np.asarray(p)
 
 def filter_within_bounds(coordinates, width, height, svgpad):
-    """This is uncropped, that is why we argpass svgpad"""
-    logging.warning(f"filtering within: [{svgpad}, {width-svgpad}[, [{svgpad}, {height-svgpad}[")
+    """This operates on uncropped coordinates, that is why we argpass svgpad"""
+    logging.debug(f"filtering within: [{svgpad}, {width-svgpad}[, [{svgpad}, {height-svgpad}[")
     filtered_centers = []
     for co in coordinates:
         if svgpad <= co[1] < width-svgpad and svgpad <= co[0] < height-svgpad:
@@ -95,7 +111,10 @@ def generate_terrain(
     evaporation_rate=0.1,
     coastal_dropoff=50., # high: very small slope towards sea, low: abrupt change to sea
 ):
-    """3 ways erosion github"""
+    """
+    Modified version of https://github.com/dandrino/terrain-erosion-3-ways
+    Will Largely take in parameters from the config file.
+    """
     dim = mask.shape[0]
     shape = (dim,) * 2
     print('  ...initial terrain shape')

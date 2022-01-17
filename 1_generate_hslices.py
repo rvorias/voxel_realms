@@ -10,23 +10,29 @@ config = OmegaConf.load("pipeline/config.yaml")
 f = partial(run_pipeline, config=config)
 
 ##################
-POOL_SIZE = 2
-N_REALMS = 5
+POOL_SIZE = 8
+N_REALMS = 10
 IN_FOLDER = "svgs"
 OUT_FOLDER = "output"
 ##################
 
 paths = glob.glob(f"{IN_FOLDER}/*.svg")
 idxs = [path.replace(f"{IN_FOLDER}/", "").replace(".svg", "") for path in paths]
-done_folders = glob.glob(f"{OUT_FOLDER}/height_*.png")
-done_idxs = [path.replace(f"{OUT_FOLDER}/height_", "").replace(".png", "") for path in paths]
-candidates = [path for path in paths if path not in done_idxs]
-candidates = candidates[:N_REALMS]
+print(idxs)
+done_paths = glob.glob(f"{OUT_FOLDER}/height_*.png")
+done_idxs = [path.replace(f"{OUT_FOLDER}/height_", "").replace(".png", "") for path in done_paths]
+print(done_paths[:10])
+print(idxs[:10])
+print(done_idxs[:10])
+candidates = [paths[i] for i in range(len(paths)) if idxs[i] not in done_idxs]
+candidates = candidates
 
 if __name__=="__main__":
+    print(f"done {len(done_paths)} realms")
+    print(f"starting with {len(candidates)} candidates")
     start = time.time()
     with Pool(POOL_SIZE) as p:
-        p.map(f, paths)
+        p.map(f, candidates)
 
     end = time.time()
     total_time = end-start

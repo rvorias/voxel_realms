@@ -1,17 +1,21 @@
+"""
+This file holds the logic for applying various operations to bitmasks and svgs.
+Author: rvorias
+"""
+
 import logging
+from math import inf
 from random import choice, randint, uniform, random
 
 import numpy as np
 import PIL.ImageColor
-from PIL import Image, ImageDraw
+from PIL import ImageDraw
 
 import matplotlib.pyplot as plt
 
 from reportlab.graphics.shapes import *
 
 logger = logging.getLogger("realms")
-
-import shutil
 
 
 def close_svg(drawing, rng=460, debug=False, islands_only=False):
@@ -36,7 +40,6 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
         """Extrapolates points lying at ‘limit‘."""
         assert y != 0
         assert x != 0
-        print(x, y)
         if x < -limit:
             return [-bound, y / x * -bound]
         elif x > limit:
@@ -63,7 +66,6 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
             # 'tis an island
             pure_islands.append(np.array(split_array))
         else:
-            print(split_array)
             first, last = split_array[0], split_array[-1]
             # check coordinates on the far left:
             first = extend(first[0], first[1], rng, LIMIT)
@@ -252,35 +254,6 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
     return data
 
 
-def draw_cities(city_centers, himg=None, cimg=None, extra_scaling=1.):
-    """
-    Args:
-        city centers:   List of city centers with x,y,r information.
-        himg:           PIL height image.
-        cimg:           PIL color image.
-    """
-    if himg is not None:
-        hdrawer = PIL.ImageDraw.Draw(himg)
-    if cimg is not None:
-        cdrawer = PIL.ImageDraw.Draw(cimg)
-
-    for city_center in city_centers:
-        y, x, r = city_center
-        x = (x - 32) * extra_scaling
-        y = (y - 32) * extra_scaling
-        r = r / 2 * extra_scaling
-        # h = hmap[x, y]
-        # c = cmap[x, y]
-        # print(x,y,r,h,c)
-
-        if himg is not None:
-            hdrawer.ellipse((x - r, y - r, x + r, y + r), fill=(200))
-        if cimg is not None:
-            cdrawer.ellipse((x - r, y - r, x + r, y + r), fill=(200, 200, 200))
-
-    return himg, cimg
-
-
 def put_cities(cities, hmap=None, cmap=None, extra_scaling=1., sealevel=0.3):
     """
     Args:
@@ -305,7 +278,7 @@ def put_cities(cities, hmap=None, cmap=None, extra_scaling=1., sealevel=0.3):
 
 
 def generate_city(r=40):
-    from PIL import Image
+    from PIL import Image # keep this import here
     dirt = PIL.ImageColor.getrgb("#50352E")
 
     combinations = {
@@ -466,3 +439,46 @@ def slice_cont(
         if not os.path.exists(f"output/hslices_{realm_number}"):
             os.mkdir(f"output/hslices_{realm_number}")
         img.save(f"output/hslices_{realm_number}/{i:04d}.png")
+
+
+def extract_land_sea_direction(
+    cropped_land_mask, debug=False
+):
+    """
+    This functions extract the direction land-sea so that
+    the realms can be chained together.
+
+    the main principle is to aggregate points along the edges and
+    calculate the weights of the sides.
+
+    Args:
+        cropped_land_mask: bitmask of land (1) and sea (0) in cropped form
+        debug: debug mode
+
+    Returns:
+        theta: land-sea orientation of the realm
+    """
+    
+    top = np.sum(cropped_land_mask[0], dtype=np.float)
+    left = np.sum(cropped_land_mask[:,0], dtype=np.float)
+    bottom = np.sum(cropped_land_mask[-1], dtype=np.float)
+    right = np.sum(cropped_land_mask[:,-1], dtype=np.float)
+
+    # invert so that it points towards the sea
+    vector = np.array([left-right, bottom-top])
+    print(vector)
+    # normalize
+    vector = vector / np.sqrt(np.sum(vector**2)+1)
+    print(vector)
+    
+    if vector[0] != 0.:
+        direction = np.arctan2(vector[1],vector[0])
+    else:
+        direction = np.arctan2(vector[1],(vector[0]+0.001))
+
+    if debug:
+        print(vector)
+        print(direction * 180 / np.pi)
+        print(top, left, bottom, right)
+
+    return direction

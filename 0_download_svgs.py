@@ -3,7 +3,7 @@ import requests
 import asyncio
 import glob
 
-NUM_SVGS = 200
+NUM_SVGS = 8000
 
 paths = glob.glob("svgs/*.svg")
 done = [int(path.replace("svgs/","").replace("svgs\\","").replace(".svg","")) for path in paths]

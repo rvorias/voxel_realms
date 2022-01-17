@@ -1,8 +1,19 @@
+"""
+This file holds the logic for all things coloring.
+Author: rvorias
+"""
+
 import numpy as np
 from perlin_numpy import generate_perlin_noise_2d
 
 import logging
 logger = logging.getLogger("realms")
+
+WATER_COLORS = [
+    np.array([74., 134., 168.]),
+    np.array([18., 59., 115.]),
+    np.array([66., 109., 138.])
+]
 
 def colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs):
     if isinstance(mu, list):
@@ -246,68 +257,68 @@ def taiga_moss_1(hmap):
     color_diffs = [20, 0, -20]
     return colorize_perlin(hmap, mu, sig, perlin_res, color, color_diffs)
 
-biomes = {
-    # a green forest all year round
-    "forest": [
-        deep_stone,
-        deep_sea,
-        soil_brown_light,
-        forest_1,
-        forest_2,
-        stone_high
-    ],
-    # normal soil with lush grass at normal level and tough grass
-    # at higher levels
-    "grassland": [
-        deep_stone,
-        deep_sea_2,
-        soil_brown_light,
-        grass_low,
-        grass_high,
-        stone_high
-    ],
-    "jungle": [
-        deep_stone,
-        deep_sea,
-        soil_brown_dark, 
-        stone_high,
-        forest_1,
-        jungle_low,
-        jungle_high
-    ],
-    "savannah": [
-        deep_stone,
-        deep_sea,
-        soil_brown_light,
-        savannah_green
-    ],
-    "desert": [
-        deep_stone,
-        deep_sea,
-        desert_sand_1,
-        desert_sand_2,
-        desert_sand_3,
-        desert_green
-    ],
-    "taiga": [
-        taiga_stone_1,
-        taiga_dirt_3,
-        taiga_sand_1,
-        taiga_stone_2,
-        taiga_dirt_2,
-        taiga_snow_1,
-        taiga_moss_1,
-    ],
-    "tundra": [
-        deep_stone,
-        deep_sea,
-        soil_brown_light,
-    ],
-    "arctic": [
-        deep_stone,
-        deep_sea
-    ]
-}
+# biomes = {
+#     # a green forest all year round
+#     "forest": [
+#         deep_stone,
+#         deep_sea,
+#         soil_brown_light,
+#         forest_1,
+#         forest_2,
+#         stone_high
+#     ],
+#     # normal soil with lush grass at normal level and tough grass
+#     # at higher levels
+#     "grassland": [
+#         deep_stone,
+#         deep_sea_2,
+#         soil_brown_light,
+#         grass_low,
+#         grass_high,
+#         stone_high
+#     ],
+#     "jungle": [
+#         deep_stone,
+#         deep_sea,
+#         soil_brown_dark, 
+#         stone_high,
+#         forest_1,
+#         jungle_low,
+#         jungle_high
+#     ],
+#     "savannah": [
+#         deep_stone,
+#         deep_sea,
+#         soil_brown_light,
+#         savannah_green
+#     ],
+#     "desert": [
+#         deep_stone,
+#         deep_sea,
+#         desert_sand_1,
+#         desert_sand_2,
+#         desert_sand_3,
+#         desert_green
+#     ],
+#     "taiga": [
+#         taiga_stone_1,
+#         taiga_dirt_3,
+#         taiga_sand_1,
+#         taiga_stone_2,
+#         taiga_dirt_2,
+#         taiga_snow_1,
+#         taiga_moss_1,
+#     ],
+#     "tundra": [
+#         deep_stone,
+#         deep_sea,
+#         soil_brown_light,
+#     ],
+#     "arctic": [
+#         deep_stone,
+#         deep_sea
+#     ]
+# }
 
 # coloring from file
 def color_from_json(hmap, biome):
@@ -327,6 +338,16 @@ def color_from_json(hmap, biome):
         cmap = np.where(layer.sum(axis=-1, keepdims=True)>0, layer, cmap)
     return cmap
 
+biomes = [
+    "grassland",
+    "forest",
+    "savannah",
+    "desert",
+    "lava",
+    "taiga",
+    "tundra",
+    "ice"
+]
 # order does not matter between pairs
 biome_pairs = [
     ["grassland", "forest"],
@@ -339,5 +360,7 @@ biome_pairs = [
     ["forest",    "taiga"],
     ["taiga",     "tundra"],
     ["taiga",     "ice"],
-    ["tundra",    "ice"]
+    ["tundra",    "ice"],
+    ["ice",       "lava"],
+    ["desert",    "lava"]
 ]

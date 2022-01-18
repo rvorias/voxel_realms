@@ -8,9 +8,8 @@ cffi==1.15.0
 click==8.0.3
 cssselect2==0.4.1
 cycler==0.10.0
-dataclasses==0.8
 decorator==4.4.2
-defusedxml==0.7.1
+defusedxml==-1.7.1
 entrypoints==0.3
 imageio==2.9.0
 importlib-metadata==4.8.1

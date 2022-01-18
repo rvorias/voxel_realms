@@ -9,7 +9,9 @@ FileToVox*
 MagicaVoxel*
 
 # dev
+blendfiles/
 output/
+output_backup/
 svgs/
 dev/
 notebooks/

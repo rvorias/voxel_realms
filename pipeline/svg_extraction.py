@@ -106,8 +106,8 @@ def get_coast_coordinates(drawing, scaling=2):
         points = group.contents[0].points
         ans.extend(points)
 
-    x = [ans[i] for i in range(0, len(ans)-2, 2)]
     y = [ans[i] for i in range(1, len(ans)-1, 2)]
+    x = [ans[i] for i in range(0, len(ans)-2, 2)]
     ans = (np.array([y, x]).T*0.4+200)*scaling
 
     return ans

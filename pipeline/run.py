@@ -2,10 +2,11 @@
 This file holds the main run logic for the pipeline.
 Author: rvorias
 """
-
+import os
 import sys
 import click
 from omegaconf import OmegaConf
+from pathlib import Path
 
 import numpy as np
 import random as rand
@@ -40,12 +41,33 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
     # hscale = choice(list(HSCALES))
     hscale = "hi"
     PAD = config.pipeline.general_padding
+    MAIN_OUTPUT_DIR = Path(config.pipeline.main_output_dir)
+    RESOURCES_DIR = Path(config.pipeline.resources_dir)
 
     DEBUG_IMG_SIZE = (10, 10)
     if debug:
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
+
+    with step("Creating output folder if needed"):
+        
+        subdirs = [
+            "directions",
+            "colors",
+            "heights",
+            "hslices",
+            "flood_configs",
+            "masks",
+            "palettes",
+            "rivers",
+        ]
+        if not os.path.isdir(MAIN_OUTPUT_DIR):
+            os.mkdir(MAIN_OUTPUT_DIR)
+        for subdir in subdirs:
+            if not os.path.isdir(MAIN_OUTPUT_DIR /subdir):
+                os.mkdir(MAIN_OUTPUT_DIR / subdir)
+            
 
     with step("Set seeds and init"):
         realm_number = int(realm_path.replace("svgs/", "").replace("svgs\\", "").replace(".svg", "").replace("../", ""))
@@ -77,9 +99,9 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
 
     with step("Starting ground-sea mask logic"):
         # uses a fixed padding of 32
+        print(realm_number)
         mask = close_svg(coast_drawing, debug=debug)
 
-        # check if we need to flip
         centers = get_heightline_centers(heightline_drawing)
         sum = _sum = 0
         _mask = (mask - 1) // 255
@@ -146,15 +168,6 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             plt.title("final water")
             plt.imshow(final_mask)
             plt.show()
-
-    with step("---Calculating land-sea direction"):
-        direction = extract_land_sea_direction(mask[PAD:-PAD,PAD:-PAD], debug=debug)
-        if debug:
-            imshow(mask[PAD:-PAD,PAD:-PAD], "cropped mask")
-            with open(f"output/{realm_number}_{direction:3f}.direction", "w") as file:
-                file.write("")
-                
-            return
 
     #############################################
     # GENERATION
@@ -326,7 +339,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
                 PIL.Image.NEAREST
             )
         himg = PIL.ImageOps.mirror(himg)
-        himg.save(f"output/height_{realm_number}.png")
+        himg.save(MAIN_OUTPUT_DIR / f"heights/height_{realm_number}.png")
 
     #############################################
     # COLORING
@@ -396,7 +409,21 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             plt.show()
 
         colorqmap_export = PIL.ImageOps.mirror(colorqmap_export)
-        colorqmap_export.save(f"output/color_{realm_number}.png")
+        colorqmap_export.save(MAIN_OUTPUT_DIR / f"colors/color_{realm_number}.png")
+
+    with step("---Calculating land-sea direction"):
+        direction = extract_land_sea_direction(mask[PAD:-PAD,PAD:-PAD], debug=debug)
+        with open(MAIN_OUTPUT_DIR / f"directions/{realm_number}_{direction:3f}.direction", "w") as file:
+            file.write("")
+        if debug:
+            imshow(mask[PAD:-PAD,PAD:-PAD], "cropped mask")
+
+    with step("---Exporting mask and rivers"):
+        mask_export = PIL.Image.fromarray(mask[PAD:-PAD,PAD:-PAD]*255)
+        mask_export.save(MAIN_OUTPUT_DIR / f"masks/mask_{realm_number}.png")
+        rivers_export = PIL.Image.fromarray(original_rivers[PAD:-PAD,PAD:-PAD]*255)
+        rivers_export.save(MAIN_OUTPUT_DIR / f"rivers/rivers_{realm_number}.png")
+        
 
     #############################################
     # Prepare for FileToVox
@@ -411,7 +438,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         water_index = len(list(colors_used)) - i
         logger.debug(f"water_index: {water_index}")
 
-        with open("resources/flood.json") as json_file:
+        with open(RESOURCES_DIR / "flood.json") as json_file:
             data = json.load(json_file)
         # change flooding water index
         data["steps"][0]["TargetColorIndex"] = water_index - 1
@@ -424,13 +451,13 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         data["steps"][0]["secondary_biome"] = secondary_biome
         # data["steps"][0]["hm_param"] = HSCALES[hscale][1]
         # data["steps"][0]["Limit"] = HSCALES[hscale][2]
-        with open(f"output/flood_{realm_number}.json", "w") as json_file:
+        with open(MAIN_OUTPUT_DIR / f"flood_configs/flood_{realm_number}.json", "w") as json_file:
             json.dump(data, json_file)
 
         palette = np.expand_dims(np.unique(np.reshape(colorqmap, (-1, 3)), axis=0), 0)
         palette = PIL.Image.fromarray(palette)
 
-        palette.save(f"output/palette_{realm_number}.png")
+        palette.save(MAIN_OUTPUT_DIR / f"palettes/palette_{realm_number}.png")
 
     with step("Creating slices"):
         slice_cont(
@@ -439,7 +466,8 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             realm_number=realm_number,
             water_mask=_final_mask[PAD:-PAD, PAD:-PAD],
             water_color=water_color,
-            hmap_cities=hmap_cities
+            hmap_cities=hmap_cities,
+            output_dir=str(MAIN_OUTPUT_DIR / "hslices")
         )
 
     if debug:

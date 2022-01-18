@@ -10,22 +10,24 @@ config = OmegaConf.load("pipeline/config.yaml")
 f = partial(run_pipeline, config=config)
 
 ##################
-POOL_SIZE = 8
+POOL_SIZE = 12
 N_REALMS = 10
 IN_FOLDER = "svgs"
 OUT_FOLDER = "output"
+generate_directions = True
 ##################
 
 paths = glob.glob(f"{IN_FOLDER}/*.svg")
 idxs = [path.replace(f"{IN_FOLDER}/", "").replace(".svg", "") for path in paths]
-print(idxs)
+# print(idxs)
 done_paths = glob.glob(f"{OUT_FOLDER}/height_*.png")
 done_idxs = [path.replace(f"{OUT_FOLDER}/height_", "").replace(".png", "") for path in done_paths]
-print(done_paths[:10])
-print(idxs[:10])
-print(done_idxs[:10])
+# print(done_paths[:10])
+# print(idxs[:10])
+# print(done_idxs[:10])
 candidates = [paths[i] for i in range(len(paths)) if idxs[i] not in done_idxs]
-candidates = candidates
+if generate_directions:
+    candidates = paths
 
 if __name__=="__main__":
     print(f"done {len(done_paths)} realms")

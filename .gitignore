@@ -10,11 +10,11 @@ MagicaVoxel*
 
 # dev
 blendfiles/
-output/
-output_backup/
+output*/
 svgs/
 dev/
 notebooks/
 animations/
 ftv_hmaps/
 movie*/
+renders/

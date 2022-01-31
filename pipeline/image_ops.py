@@ -32,7 +32,7 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
     Returns:
         bitmap of closed islands
     """
-    LIMIT = 50
+    LIMIT = 30
     OUTPUT_SIZE = 800
     SCALING = 2
 
@@ -49,6 +49,7 @@ def close_svg(drawing, rng=460, debug=False, islands_only=False):
         elif y > limit:
             return [x / y * bound, bound]
         else:
+            print(x,y)
             raise ValueError(f"edge not within limits.")
 
     # Stage 1: find the first set of open paths and closed paths (islands)
@@ -345,6 +346,7 @@ def slice_cont(
         water_mask,
         water_color,
         hmap_cities,
+        output_dir,
         fill=10,
         zscale=5,
 ):
@@ -358,6 +360,7 @@ def slice_cont(
         water_mask:          Water mask.
         water_color:    Water color.
         hmap_cities:    Cities hmap.
+        output_dir:     Output_dir
         fill:           Fill water until this level, depends on zscale.
         zscale:         Divisor of 255 (max height).
     
@@ -436,9 +439,9 @@ def slice_cont(
 
         img = PIL.Image.fromarray(output.astype(np.uint8))
         img = img.convert("RGBA")
-        if not os.path.exists(f"output/hslices_{realm_number}"):
-            os.mkdir(f"output/hslices_{realm_number}")
-        img.save(f"output/hslices_{realm_number}/{i:04d}.png")
+        if not os.path.exists(f"{output_dir}/hslices_{realm_number}"):
+            os.mkdir(f"{output_dir}/hslices_{realm_number}")
+        img.save(f"{output_dir}/hslices_{realm_number}/{i:04d}.png")
 
 
 def extract_land_sea_direction(
@@ -466,10 +469,8 @@ def extract_land_sea_direction(
 
     # invert so that it points towards the sea
     vector = np.array([left-right, bottom-top])
-    print(vector)
     # normalize
     vector = vector / np.sqrt(np.sum(vector**2)+1)
-    print(vector)
     
     if vector[0] != 0.:
         direction = np.arctan2(vector[1],vector[0])
@@ -477,8 +478,8 @@ def extract_land_sea_direction(
         direction = np.arctan2(vector[1],(vector[0]+0.001))
 
     if debug:
-        print(vector)
-        print(direction * 180 / np.pi)
-        print(top, left, bottom, right)
+        print(f"direction vector: {vector}")
+        print(f"direction degrees: {direction * 180 / np.pi}")
+        print(f"direction pixels: {top, left, bottom, right}")
 
     return direction

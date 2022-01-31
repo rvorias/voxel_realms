@@ -10,13 +10,17 @@ import matplotlib.pyplot as plt
 import logging
 logger = logging.getLogger("realms")
 
-class step:
+class Step:
     """This class is used as a wrapper for pipeline steps."""
-    def __init__(self, text):
+    def __init__(self, text, realm_number):
         self.text = text
+        self.realm_number = realm_number
     def __enter__(self):
         logger.info(self.text)
     def __exit__(self ,type, value, traceback):
+        if type != None:
+            with open(f"output/errors/{self.realm_number}.txt", "w") as f:
+                f.write(value)
         logger.info("    \---DONE")
 
 def imshow(image, title=None):
@@ -153,3 +157,21 @@ def generate_terrain(
       points, neighbors, points_deltas, volume, upstream, 
       max_delta, river_downcutting_constant)
     return render_triangulation(shape, tri, new_height)
+
+def get_wind_direction(direction):
+    """Expects radians"""
+    if direction > np.pi*7/16 and direction < np.pi*7/16:
+        return "W"
+    if direction > np.pi*5/16:
+        return "NW"
+    if direction < -np.pi*5/16:
+        return "SW"
+    if direction > np.pi*3/16:
+        return "N"
+    if direction < -np.pi*3/16:
+        return "S"
+    if direction > np.pi*1/16:
+        return "NE"
+    if direction < -np.pi*1/16:
+        return "SE"
+    return "E" 

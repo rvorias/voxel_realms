@@ -19,6 +19,7 @@ import skimage
 import skimage.filters
 
 import json
+from functools import partial
 
 import logging
 
@@ -34,7 +35,6 @@ from utils import *
 
 from coloring import biomes, WATER_COLORS, color_from_json
 
-
 def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
     REL_SEA_SCALING = config.terrain.relative_sea_depth_scaling
     HSCALES = config.terrain.height_scales
@@ -43,6 +43,7 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
     PAD = config.pipeline.general_padding
     MAIN_OUTPUT_DIR = Path(config.pipeline.main_output_dir)
     RESOURCES_DIR = Path(config.pipeline.resources_dir)
+    wind_directions = ("E", "SE", "S", "SW", "W", "NW", "N", "NE")
 
     DEBUG_IMG_SIZE = (10, 10)
     if debug:
@@ -50,15 +51,21 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
     else:
         logger.setLevel(logging.INFO)
 
+    realm_number = int(realm_path.replace("svgs/", "").replace("svgs\\", "").replace(".svg", "").replace("../", ""))
+    step = partial(Step, realm_number=realm_number)
+
     with step("Creating output folder if needed"):
         
         subdirs = [
-            "directions",
             "colors",
-            "heights",
-            "hslices",
+            "directions",
+            "errors",
             "flood_configs",
+            "heights",
+            "heights_no_cities",
+            "hslices",
             "masks",
+            "metadata",
             "palettes",
             "rivers",
         ]
@@ -68,19 +75,16 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             if not os.path.isdir(MAIN_OUTPUT_DIR /subdir):
                 os.mkdir(MAIN_OUTPUT_DIR / subdir)
             
-
     with step("Set seeds and init"):
-        realm_number = int(realm_path.replace("svgs/", "").replace("svgs\\", "").replace(".svg", "").replace("../", ""))
         logging.info(f"Processing realm number: {realm_number}")
         np.random.seed(realm_number)
         rand.seed(realm_number)
 
-    # with step("Randomizing config parameters"):
-    #     config.terrain.land.river_downcutting_constant = rand.uniform(0.1, 0.3)
-    #     config.terrain.land.default_water_level = rand.uniform(0.9, 1.1)
-    #     config.terrain.evaporation_rate = rand.uniform(0.1, 0.3)
-    #     config.terrain.coastal_dropoff = rand.uniform(70, 90)
-    #     config.final_height_modifier = rand.uniform(0.7, 1.)
+    with step("Randomizing config parameters"):
+        config.terrain.land.river_downcutting_constant = rand.uniform(0.1, 0.3)
+        config.terrain.land.default_water_level = rand.uniform(0.9, 1.1)
+        config.terrain.evaporation_rate = rand.uniform(0.1, 0.3)
+        config.terrain.coastal_dropoff = rand.uniform(70, 90)
 
     with step("Setting up extractor"):
         extractor = SVGExtractor(realm_path, scale=config.svg.scaling)
@@ -129,6 +133,13 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             plt.title("land-sea mask")
             plt.imshow(mask)
             plt.show()
+
+    with step("---Calculating land-sea direction"):
+        direction = extract_land_sea_direction(mask[PAD:-PAD,PAD:-PAD], debug=debug)
+        with open(MAIN_OUTPUT_DIR / f"directions/{realm_number}_{direction:3f}.direction", "w") as file:
+            file.write("")
+        if debug:
+            imshow(mask[PAD:-PAD,PAD:-PAD], "cropped mask")
 
     # ------------------------------------------------------------------------------
     with step("----Extracting rivers"):
@@ -309,6 +320,17 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             print(f"combined_min = {combined.min()}.")
             print(f"combined_max = {combined.max()}.")
 
+    with step("Exporting height map without cities"):
+        hmap_export = (hmap * 255).astype(np.uint8)
+        hmap_export = PIL.Image.fromarray(hmap_export).convert('L')
+        if config.export.size > 0:
+            himg = hmap_export.resize(
+                (config.export.size, config.export.size),
+                PIL.Image.NEAREST
+            )
+        hmap_export = PIL.ImageOps.mirror(hmap_export)
+        hmap_export.save(MAIN_OUTPUT_DIR / f"heights_no_cities/heightsnc_{realm_number}.png")
+
     with step("Generating and drawing cities onto heightmap"):
         cities = []
         for city_center in city_centers:
@@ -411,17 +433,14 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
         colorqmap_export = PIL.ImageOps.mirror(colorqmap_export)
         colorqmap_export.save(MAIN_OUTPUT_DIR / f"colors/color_{realm_number}.png")
 
-    with step("---Calculating land-sea direction"):
-        direction = extract_land_sea_direction(mask[PAD:-PAD,PAD:-PAD], debug=debug)
-        with open(MAIN_OUTPUT_DIR / f"directions/{realm_number}_{direction:3f}.direction", "w") as file:
-            file.write("")
-        if debug:
-            imshow(mask[PAD:-PAD,PAD:-PAD], "cropped mask")
-
     with step("---Exporting mask and rivers"):
-        mask_export = PIL.Image.fromarray(mask[PAD:-PAD,PAD:-PAD]*255)
+        original_pad = int(PAD/config.pipeline.extra_scaling)
+        mask_export = PIL.Image.fromarray(mask[original_pad:-original_pad,original_pad:-original_pad]*255)
+        if config.pipeline.extra_scaling != 1.:
+            mask_export = mask_export.resize((int(mask_export.size[0]*config.pipeline.extra_scaling), int(mask_export.size[1]*config.pipeline.extra_scaling)))
         mask_export.save(MAIN_OUTPUT_DIR / f"masks/mask_{realm_number}.png")
         rivers_export = PIL.Image.fromarray(original_rivers[PAD:-PAD,PAD:-PAD]*255)
+        rivers_export = PIL.ImageOps.mirror(rivers_export)
         rivers_export.save(MAIN_OUTPUT_DIR / f"rivers/rivers_{realm_number}.png")
         
 
@@ -447,8 +466,6 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
             int(water_color[1]),
             int(water_color[2]),
         ]
-        data["steps"][0]["primary_biome"] = primary_biome
-        data["steps"][0]["secondary_biome"] = secondary_biome
         # data["steps"][0]["hm_param"] = HSCALES[hscale][1]
         # data["steps"][0]["Limit"] = HSCALES[hscale][2]
         with open(MAIN_OUTPUT_DIR / f"flood_configs/flood_{realm_number}.json", "w") as json_file:
@@ -459,16 +476,26 @@ def run_pipeline(realm_path, config="pipeline/config.yaml", debug=False):
 
         palette.save(MAIN_OUTPUT_DIR / f"palettes/palette_{realm_number}.png")
 
-    with step("Creating slices"):
-        slice_cont(
-            hmap,
-            colorqmap.astype(np.uint8),
-            realm_number=realm_number,
-            water_mask=_final_mask[PAD:-PAD, PAD:-PAD],
-            water_color=water_color,
-            hmap_cities=hmap_cities,
-            output_dir=str(MAIN_OUTPUT_DIR / "hslices")
-        )
+    with step("Exporting metadata"):
+        metadata = {
+            "primary_biome": primary_biome,
+            "landscape_height": hscale,
+            "wind_direction": get_wind_direction(direction)
+        }
+        with open(MAIN_OUTPUT_DIR / f"metadata/{realm_number}.json", "w") as json_file:
+            json.dump(metadata, json_file)
+        
+    
+    # with step("Creating slices"):
+    #     slice_cont(
+    #         hmap,
+    #         colorqmap.astype(np.uint8),
+    #         realm_number=realm_number,
+    #         water_mask=_final_mask[PAD:-PAD, PAD:-PAD],
+    #         water_color=water_color,
+    #         hmap_cities=hmap_cities,
+    #         output_dir=str(MAIN_OUTPUT_DIR / "hslices")
+    #     )
 
     if debug:
         # also save intermediate files

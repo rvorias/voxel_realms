@@ -2,8 +2,10 @@ svg:
   scaling: 2.0
   padding: 16
 pipeline:
+  main_output_dir: "./output"
+  resources_dir: "./resources"
   river_gaussian: 1.2
-  extra_scaling: 1. # this scales all the output
+  extra_scaling: 2. # this scales all the output
   general_padding: 32 # general bitmask padding
 terrain:
   land:
